@@ -88,6 +88,7 @@
       <Filter>vendor\imgui</Filter>
     </ClCompile>
     <ClCompile Include="src\game\CS2Context.cpp" />
+    <ClCompile Include="src\dma\bootstrap\Bootstrap.cpp" />
     <ClCompile Include="src\dma\DMA Thread.cpp" />
     <ClCompile Include="src\dma\DMA.cpp" />
     <ClCompile Include="src\game\client\EntityList.cpp" />
@@ -160,6 +161,7 @@
     <ClInclude Include="src\game\CS2Context.h" />
     <ClInclude Include="src\game\GameGlobals.h" />
     <ClInclude Include="src\game\GameModules.h" />
+    <ClInclude Include="src\dma\bootstrap\Bootstrap.h" />
     <ClInclude Include="src\dma\DMA Thread.h" />
     <ClInclude Include="src\dma\DMA.h" />
     <ClInclude Include="src\dma\IGameContext.h" />

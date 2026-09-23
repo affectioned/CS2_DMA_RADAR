@@ -167,6 +167,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\dma\bootstrap\Bootstrap.cpp" />
     <ClCompile Include="src\dma\DMA Thread.cpp" />
     <ClCompile Include="src\dma\DMA.cpp" />
     <ClCompile Include="src\dma\input\Input Manager.cpp" />
@@ -236,6 +237,7 @@
     <ClCompile Include="src\vgui\resources.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\dma\bootstrap\Bootstrap.h" />
     <ClInclude Include="src\dma\DMA Thread.h" />
     <ClInclude Include="src\dma\DMA.h" />
     <ClInclude Include="src\dma\IGameContext.h" />

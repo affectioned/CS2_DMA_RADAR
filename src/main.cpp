@@ -6,6 +6,7 @@
 #include "updater.h"
 #include "CS2Context.h"
 #include "DMA/DMA Thread.h"
+#include "DMA/bootstrap/Bootstrap.h"
 
 std::atomic<bool> bRunning{ true };
 
@@ -19,6 +20,11 @@ int main()
 	}
 
 	Log::Info("Starting CS2 Radar");
+
+	if (!Bootstrap::EnsureRuntimeDlls()) {
+		Log::Error("Required runtime DLLs could not be obtained; aborting");
+		return 1;
+	}
 
 	gui::CreateAppWindow();
 
