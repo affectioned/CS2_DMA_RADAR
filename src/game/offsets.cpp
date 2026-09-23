@@ -9,20 +9,20 @@
 
 namespace client_dll {
 	// ── Module-level RVA pointers ────────────────────────────────────────────
-	std::ptrdiff_t dwEntityList            = 0;
-	std::ptrdiff_t dwLocalPlayerController = 0;
-	std::ptrdiff_t dwLocalPlayerPawn       = 0;
-	std::ptrdiff_t dwGlobalVars            = 0;
-	std::ptrdiff_t dwPlantedC4             = 0;
-	std::ptrdiff_t dwWeaponC4              = 0x22A6C68;
-	std::ptrdiff_t dwGameRules             = 0x2328E38;
+	std::ptrdiff_t dwEntityList            = 0x2710038;
+	std::ptrdiff_t dwLocalPlayerController = 0x25324D8;
+	std::ptrdiff_t dwLocalPlayerPawn       = 0x255B598;
+	std::ptrdiff_t dwGlobalVars            = 0x2226F08;
+	std::ptrdiff_t dwPlantedC4             = 0x24C3D28;
+	std::ptrdiff_t dwWeaponC4              = 0x24BF400;
+	std::ptrdiff_t dwGameRules             = 0x255AA88;
 
 	// ── Class member offsets ─────────────────────────────────────────────────
 
 	namespace C_BaseEntity {
 		std::ptrdiff_t m_iHealth          = 0x34C;
 		std::ptrdiff_t m_lifeState        = 0x354;
-		std::ptrdiff_t m_iTeamNum         = 0x3EB;
+		std::ptrdiff_t m_iTeamNum         = 0x3E7;
 		std::ptrdiff_t m_pGameSceneNode   = 0x330;
 		std::ptrdiff_t m_hOwnerEntity     = 0x520;
 	}
@@ -32,9 +32,9 @@ namespace client_dll {
 	}
 
 	namespace C_BasePlayerPawn {
-		std::ptrdiff_t m_pWeaponServices    = 0x11E0;
-		std::ptrdiff_t m_pObserverServices  = 0x11F8;
-		std::ptrdiff_t m_vOldOrigin         = 0x1390;
+		std::ptrdiff_t m_pWeaponServices    = 0x12F0;
+		std::ptrdiff_t m_pObserverServices  = 0x1308;
+		std::ptrdiff_t m_vOldOrigin         = 0x14A4;
 	}
 
 	namespace CPlayer_WeaponServices {
@@ -46,18 +46,18 @@ namespace client_dll {
 	}
 
 	namespace CCSPlayerController {
-		std::ptrdiff_t m_sSanitizedPlayerName = 0x858;
-		std::ptrdiff_t m_iCompTeammateColor   = 0x840;
-		std::ptrdiff_t m_hPlayerPawn          = 0x904;
-		std::ptrdiff_t m_iPawnArmor           = 0x914;
-		std::ptrdiff_t m_bPawnHasDefuser      = 0x918;
-		std::ptrdiff_t m_bPawnHasHelmet       = 0x919;
+		std::ptrdiff_t m_sSanitizedPlayerName = 0x878;
+		std::ptrdiff_t m_iCompTeammateColor   = 0x858;
+		std::ptrdiff_t m_hPlayerPawn          = 0x92C;
+		std::ptrdiff_t m_iPawnArmor           = 0x93C;
+		std::ptrdiff_t m_bPawnHasDefuser      = 0x940;
+		std::ptrdiff_t m_bPawnHasHelmet       = 0x941;
 	}
 
 	namespace C_CSPlayerPawn {
-		std::ptrdiff_t m_szLastPlaceName  = 0x14B4;
-		std::ptrdiff_t m_bIsDefusing      = 0x1C4A;
-		std::ptrdiff_t m_angEyeAngles     = 0x3300;
+		std::ptrdiff_t m_szLastPlaceName  = 0x15BC;
+		std::ptrdiff_t m_bIsDefusing      = 0x1EA2;
+		std::ptrdiff_t m_angEyeAngles     = 0x35F0;
 	}
 
 	namespace C_CSGameRulesProxy {
@@ -69,17 +69,17 @@ namespace client_dll {
 	}
 
 	namespace C_PlantedC4 {
-		std::ptrdiff_t m_bBombTicking     = 0x1160;
-		std::ptrdiff_t m_nBombSite        = 0x1164;
-		std::ptrdiff_t m_flC4Blow         = 0x1190;
-		std::ptrdiff_t m_bHasExploded     = 0x1195;
-		std::ptrdiff_t m_bBeingDefused    = 0x119C;
-		std::ptrdiff_t m_bC4Activated     = 0x11A8;
-		std::ptrdiff_t m_bBombDefused     = 0x11B4;
+		std::ptrdiff_t m_bBombTicking     = 0x1288;
+		std::ptrdiff_t m_nBombSite        = 0x128C;
+		std::ptrdiff_t m_flC4Blow         = 0x12B8;
+		std::ptrdiff_t m_bHasExploded     = 0x12BD;
+		std::ptrdiff_t m_bBeingDefused    = 0x12C4;
+		std::ptrdiff_t m_bC4Activated     = 0x12D0;
+		std::ptrdiff_t m_bBombDefused     = 0x12DC;
 	}
 
 	namespace C_EconEntity {
-		std::ptrdiff_t m_AttributeManager = 0x1180;
+		std::ptrdiff_t m_AttributeManager = 0x1290;
 	}
 
 	namespace C_AttributeContainer {
@@ -92,7 +92,7 @@ namespace client_dll {
 }
 
 namespace engine2_dll {
-	std::ptrdiff_t dwBuildNumber                   = 0x60CC74;
-	std::ptrdiff_t dwNetworkGameClient             = 0x90A0C0;
+	std::ptrdiff_t dwBuildNumber                   = 0x61C1EC;
+	std::ptrdiff_t dwNetworkGameClient             = 0x91A150;
 	std::ptrdiff_t dwNetworkGameClient_signOnState = 0x230;
 }
