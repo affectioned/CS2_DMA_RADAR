@@ -259,9 +259,15 @@ void gui::renderPlayers(const CGame& game, const RadarFrame& f) {
 			? setColor(p.ctrl.color, opacity)
 			: IM_COL32(255, 9, 9, (int)opacity);
 
+		const bool isLocal = (p.controllerBase == game.localPlayer.controllerBase);
+
 		// Defusing ring -- orange, enemies only
 		if (p.pawn.isDefusing && p.ctrl.teamID != game.localPlayer.ctrl.teamID)
 			ImGui::GetForegroundDrawList()->AddCircle(pos, settings::dotRadius + 3.5f, IM_COL32(255, 150, 20, (int)opacity), 0, 2.0f);
+
+		// Local player: white outer ring so the "you" dot is unmistakable
+		if (isLocal)
+			ImGui::GetForegroundDrawList()->AddCircle(pos, settings::dotRadius + 3.5f, IM_COL32(255, 255, 255, (int)opacity), 0, 2.5f);
 
 		ImGui::GetForegroundDrawList()->AddCircleFilled(pos, settings::dotRadius + 1.25f, IM_COL32(0, 0, 0, 255));
 		ImGui::GetForegroundDrawList()->AddCircleFilled(pos, settings::dotRadius,         dotColor);

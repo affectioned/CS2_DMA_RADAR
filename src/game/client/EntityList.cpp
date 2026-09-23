@@ -28,21 +28,26 @@ namespace {
 void CS2Context::t_EntityChain()
 {
 	ZoneScoped;
-	// Re-read dwEntityList fresh — never trust the cached value. The pointer at
-	// this static offset is stable but the value it holds can change on map load.
+	// Merged: read dwEntityList and speculatively read chunk 0 from the
+	// previously-known entityList address in one scatter call.
 	uint64_t entityList = 0;
+	uint64_t newChunk = 0;
 	g_Scatter->Add(g_ClientBase + client_dll::dwEntityList, &entityList);
+	if (m_Local->entityList)
+		g_Scatter->Add(m_Local->entityList + 16, &newChunk);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
 	if (!entityList || entityList < 0x10000 || entityList > 0x7FFFFFFFFFFF) return;
-	m_Local->entityList = entityList;
 
-	// Pass 0: read chunk 0 pointer (player slots 1-64 all live in chunk 0)
-	uint64_t newChunk = 0;
-	g_Scatter->Add(entityList + 16, &newChunk);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
+	if (entityList != m_Local->entityList || !newChunk) {
+		m_Local->entityList = entityList;
+		newChunk = 0;
+		g_Scatter->Add(entityList + 16, &newChunk);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+	}
+	m_Local->entityList = entityList;
 
 	if (!newChunk || newChunk < 0x10000 || newChunk > 0x7FFFFFFFFFFF) return;
 

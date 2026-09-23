@@ -8,7 +8,7 @@ public:
 	CS2Context(CGame& game, std::mutex& gameMutex);
 
 	bool Initialize(DMA_Connection* conn) override;
-	void Tick(DMA_Connection* conn, std::chrono::steady_clock::time_point now) override;
+	bool Tick(DMA_Connection* conn, std::chrono::steady_clock::time_point now) override;
 
 	~CS2Context() override;
 
@@ -31,6 +31,11 @@ private:
 	uint64_t m_NetworkClientPtr = 0;   // refreshed by t_ModulePtrs, consumed by t_NetworkState
 	uint64_t m_GameRulesPtr     = 0;   // C_CSGameRules* — refreshed by t_ModulePtrs, used by t_BombState
 	int32_t  m_LastRoundEndWinner = 0; // tracks m_iRoundEndWinnerTeam for 0→non-zero transition detection
+	// Cached intermediate pointers for speculative scatter merging in t_CarrierScan
+	uint64_t m_CachedC4Wrapper    = 0;
+	uint64_t m_CachedC4Weapon     = 0;
+	uint32_t m_CachedOwnerHandle  = 0;
+	uint64_t m_CachedCarrierChunk = 0;
 	// Set on respawn to the previous bomb's m_flC4Blow value. t_BombState suppresses
 	// any entity whose m_flC4Blow matches until a new (different) plant is detected.
 	float    m_SuppressedC4Blow = 0.0f;

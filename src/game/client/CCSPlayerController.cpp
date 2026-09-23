@@ -27,11 +27,17 @@ void CS2Context::t_PlayerCtrl()
 	ZoneScoped;
 	if (m_Local->localPlayer.controllerBase)
 		m_Local->localPlayer.ctrl.Read(m_Local->localPlayer.controllerBase);
-	for (int i = 0; i < MAX_ENTITIES; i++)
+	for (int i = 0; i < MAX_ENTITIES; i++) {
 		if (m_Local->players[i].controllerBase)
 			m_Local->players[i].ctrl.Read(m_Local->players[i].controllerBase);
+		if (m_Local->players[i].pawnBase)
+			m_Local->players[i].pawn.ReadStatus(m_Local->players[i].pawnBase);
+	}
 	g_Scatter->Execute();
 	g_Scatter->Clear();
+
+	for (int i = 0; i < MAX_ENTITIES; i++)
+		m_Local->players[i].pawn.lastPlaceName[sizeof(m_Local->players[i].pawn.lastPlaceName) - 1] = '\0';
 }
 
 // ── t_PlayerNames — 5000 ms ───────────────────────────────────────────────────

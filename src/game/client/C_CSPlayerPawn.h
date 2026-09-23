@@ -13,4 +13,6 @@ struct C_CSPlayerPawn {
 	uint64_t weaponServicesPtr   = 0;
 
 	void Read(uint64_t base);
+	void ReadFast(uint64_t base);
+	void ReadStatus(uint64_t base);
 };

@@ -85,6 +85,7 @@ int main(int argc, char* argv[])
 	std::thread DMAThread(DMA_Thread_Main);
 
 	HANDLE hTracyProcess = nullptr;
+	HANDLE hTracyStderrRead = nullptr;
 	if (tracyMode)
 	{
 		namespace fs = std::filesystem;
@@ -93,16 +94,26 @@ int main(int argc, char* argv[])
 		fs::path exeDir = fs::path(exePath).parent_path();
 		fs::path traceFile = exeDir / L"profile.tracy";
 
+		std::error_code ec;
+		fs::remove(traceFile, ec);
+
 		std::wstring cmd = L"\"" + (exeDir / L"tracy-capture.exe").wstring()
 			+ L"\" -a 127.0.0.1 -o \"" + traceFile.wstring()
 			+ L"\" -s " + std::to_wstring(tracyDuration);
 
+		SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE };
+		HANDLE hStderrWrite = nullptr;
+		CreatePipe(&hTracyStderrRead, &hStderrWrite, &sa, 0);
+		SetHandleInformation(hTracyStderrRead, HANDLE_FLAG_INHERIT, 0);
+
 		STARTUPINFOW si{ sizeof(si) };
-		si.dwFlags = STARTF_USESHOWWINDOW;
+		si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 		si.wShowWindow = SW_HIDE;
+		si.hStdOutput = hStderrWrite;
+		si.hStdError = hStderrWrite;
 		PROCESS_INFORMATION pi{};
 		std::wstring mutableCmd = cmd;
-		if (CreateProcessW(nullptr, mutableCmd.data(), nullptr, nullptr, FALSE,
+		if (CreateProcessW(nullptr, mutableCmd.data(), nullptr, nullptr, TRUE,
 			CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
 		{
 			hTracyProcess = pi.hProcess;
@@ -114,6 +125,7 @@ int main(int argc, char* argv[])
 			Log::Error("[Tracy] Failed to start tracy-capture");
 			tracyMode = false;
 		}
+		CloseHandle(hStderrWrite);
 	}
 
 	Log::Info("Render loop running - press END to exit");
@@ -132,9 +144,35 @@ int main(int argc, char* argv[])
 	{
 		Log::Info("[Tracy] Waiting for capture to finish...");
 		WaitForSingleObject(hTracyProcess, 60000);
+
+		DWORD exitCode = 0;
+		GetExitCodeProcess(hTracyProcess, &exitCode);
 		CloseHandle(hTracyProcess);
+
+		if (hTracyStderrRead)
+		{
+			std::string captureOutput;
+			char buf[1024];
+			DWORD bytesRead;
+			while (ReadFile(hTracyStderrRead, buf, sizeof(buf), &bytesRead, nullptr) && bytesRead > 0)
+				captureOutput.append(buf, bytesRead);
+			CloseHandle(hTracyStderrRead);
+			hTracyStderrRead = nullptr;
+
+			if (!captureOutput.empty())
+			{
+				while (!captureOutput.empty() && (captureOutput.back() == '\n' || captureOutput.back() == '\r'))
+					captureOutput.pop_back();
+				Log::Info("[Tracy] capture output: {}", captureOutput);
+			}
+		}
+
+		if (exitCode != 0)
+			Log::Warn("[Tracy] tracy-capture exited with code {}", exitCode);
+
 		Bootstrap::RunTracySession(tracyDuration);
 	}
+	if (hTracyStderrRead) CloseHandle(hTracyStderrRead);
 
 	delete g_GameContext;
 	g_GameContext = nullptr;

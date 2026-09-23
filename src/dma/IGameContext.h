@@ -13,7 +13,8 @@ struct IGameContext
     virtual bool Initialize(DMA_Connection* conn) = 0;
 
     // Called every tick (nominally 1 ms). Tick your CTimers here.
-    virtual void Tick(DMA_Connection* conn, std::chrono::steady_clock::time_point now) = 0;
+    // Returns true if any timer fired (caller uses this to decide sleep vs spin).
+    virtual bool Tick(DMA_Connection* conn, std::chrono::steady_clock::time_point now) = 0;
 
     virtual ~IGameContext() = default;
 };

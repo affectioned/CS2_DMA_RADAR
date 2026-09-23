@@ -8,13 +8,15 @@ class CTimer
 public:
 	CTimer(T _Interval, F _Function) : m_Interval(_Interval), m_Function(_Function) {}
 
-	void Tick(std::chrono::steady_clock::time_point CurrentTime)
+	bool Tick(std::chrono::steady_clock::time_point CurrentTime)
 	{
 		if (std::chrono::duration_cast<T>(CurrentTime - m_LastExecutionTime) >= m_Interval)
 		{
 			m_Function();
 			m_LastExecutionTime = CurrentTime;
+			return true;
 		}
+		return false;
 	}
 private:
 	T m_Interval{};

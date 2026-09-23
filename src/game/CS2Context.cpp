@@ -83,15 +83,19 @@ bool CS2Context::Initialize(DMA_Connection* conn)
 	return true;
 }
 
-void CS2Context::Tick(DMA_Connection* /*conn*/,
+bool CS2Context::Tick(DMA_Connection* /*conn*/,
                       std::chrono::steady_clock::time_point now)
 {
 	ZoneScoped;
+	bool anyFired = false;
 	for (auto& t : m_Timers)
-		t.Tick(now);
+		if (t.Tick(now)) anyFired = true;
 
-	std::lock_guard<std::mutex> lock(m_Mutex);
-	m_Game = *m_Local;
+	if (anyFired) {
+		std::lock_guard<std::mutex> lock(m_Mutex);
+		m_Game = *m_Local;
+	}
+	return anyFired;
 }
 
 // ── t_ModulePtrs — 1000 ms ────────────────────────────────────────────────────
@@ -177,16 +181,7 @@ void CS2Context::t_MapName()
 		activeOff = 0x188;
 	}
 
-	uint64_t globalVars = 0;
-	g_Scatter->Add(g_ClientBase + client_dll::dwGlobalVars, &globalVars);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
-
-	static uint64_t lastGV = 0;
-	if (globalVars != lastGV) {
-		Log::Info("[Map]: globalVars 0x{:X}", globalVars);
-		lastGV = globalVars;
-	}
+	uint64_t globalVars = m_GlobalVarsPtr;
 
 	if (!isValidPtr(globalVars))
 		return;

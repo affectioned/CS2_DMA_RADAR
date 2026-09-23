@@ -23,9 +23,9 @@ namespace
 	constexpr const wchar_t* kRepoArchiveHost = L"github.com";
 	constexpr const wchar_t* kRepoArchivePath = L"/affectioned/CS2_DMA_RADAR/archive/refs/heads/main.zip";
 
-	constexpr const wchar_t* kTracyApiPath   = L"/repos/wolfpld/tracy/releases/latest";
+	constexpr const wchar_t* kTracyApiPath   = L"/repos/wolfpld/tracy/releases/tags/v0.11.1";
 	constexpr const char*    kTracyNeedle    = "windows-";
-	const std::vector<std::wstring> kTracyTools = { L"tracy-capture.exe", L"tracy-csvexport.exe" };
+	const std::vector<std::wstring> kTracyTools = { L"tracy-capture.exe", L"tracy-csvexport.exe", L"tracy-profiler.exe" };
 
 	const std::vector<std::wstring> kRequiredDlls = {
 		L"vmm.dll",

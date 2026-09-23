@@ -12,22 +12,21 @@
 void CS2Context::t_BombState()
 {
 	ZoneScoped;
-	// Re-read dwPlantedC4 fresh — never cache this pointer across map transitions.
-	// Also piggy-back the round-end-winner read so we can detect "round just
-	// ended" without a separate scatter pass — the transition 0 → non-zero
-	// fires the moment CS2 declares a winner, even on T-elimination where
-	// m_bC4Activated and m_bBombTicking stay true on the stale entity.
 	uint64_t plantedC4Ptr = 0;
 	int32_t  newRoundEndWinner = m_LastRoundEndWinner;
+	uint64_t c4 = 0;
+
+	// Merged pass 1+2: read dwPlantedC4 + roundEndWinner, and speculatively
+	// dereference the previous plantedC4Ptr in the same scatter call.
 	g_Scatter->Add(g_ClientBase + client_dll::dwPlantedC4, &plantedC4Ptr);
 	if (m_GameRulesPtr)
 		g_Scatter->Add(m_GameRulesPtr + client_dll::C_CSGameRules::m_iRoundEndWinnerTeam, &newRoundEndWinner);
+	bool specDeref = isValidPtr(m_PlantedC4Ptr);
+	if (specDeref)
+		g_Scatter->Add(m_PlantedC4Ptr, &c4);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
-	// Round-end transition: clear bomb state immediately so the panel doesn't
-	// keep showing a counting-down timer (T-elim) or a stale "DEFUSED"/
-	// "EXPLODED" banner across rounds. Latch the new winner so we don't loop.
 	if (m_LastRoundEndWinner == 0 && newRoundEndWinner != 0) {
 		Log::Info("[Bomb]: Round end (winner team {}), clearing bomb state", newRoundEndWinner);
 		m_Local->bomb      = {};
@@ -41,12 +40,15 @@ void CS2Context::t_BombState()
 		m_SuppressedC4Blow = 0.0f;
 		return;
 	}
-	m_PlantedC4Ptr = plantedC4Ptr;
 
-	uint64_t c4 = 0;
-	g_Scatter->Add(plantedC4Ptr, &c4);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
+	if (plantedC4Ptr != m_PlantedC4Ptr || !specDeref) {
+		m_PlantedC4Ptr = plantedC4Ptr;
+		c4 = 0;
+		g_Scatter->Add(plantedC4Ptr, &c4);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+	}
+	m_PlantedC4Ptr = plantedC4Ptr;
 
 	if (!c4) {
 		m_Local->bomb.entity      = 0;
@@ -55,17 +57,20 @@ void CS2Context::t_BombState()
 		return;
 	}
 
-	// Reset plant timer and position if the entity pointer changed (new round)
 	if (c4 != m_Local->bomb.entity) {
 		m_Local->bomb.plantTimeSet = false;
 		m_Local->bomb.position     = {};
 	}
 	m_Local->bomb.entity = c4;
 
+	// Merged pass 3+4: read bomb fields and speculatively read position from
+	// the previously-known sceneNode in the same scatter call.
 	bool    newActivated = false, newTicking  = false;
 	bool    newDefusing  = false, newExploded = false, newDefused = false;
 	int32_t newSite      = -1;
 	float   newC4Blow    = 0.0f;
+	Vector3 specPos      = {};
+	uint64_t prevSceneNode = m_Local->bomb.sceneNode;
 
 	g_Scatter->Add(c4 + client_dll::C_BaseEntity::m_pGameSceneNode, &m_Local->bomb.sceneNode);
 	g_Scatter->Add(c4 + client_dll::C_PlantedC4::m_bC4Activated,    &newActivated);
@@ -75,10 +80,12 @@ void CS2Context::t_BombState()
 	g_Scatter->Add(c4 + client_dll::C_PlantedC4::m_bHasExploded,    &newExploded);
 	g_Scatter->Add(c4 + client_dll::C_PlantedC4::m_bBombDefused,    &newDefused);
 	g_Scatter->Add(c4 + client_dll::C_PlantedC4::m_flC4Blow,        &newC4Blow);
+	bool specPos_ok = isValidPtr(prevSceneNode);
+	if (specPos_ok)
+		g_Scatter->Add(prevSceneNode + client_dll::CGameSceneNode::m_vecAbsOrigin, &specPos);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
-	// Stale entity from previous round — clear entity so t_CarrierScan isn't suppressed
 	if (!newActivated) {
 		m_Local->bomb.entity       = 0;
 		m_Local->bomb.isTicking    = false;
@@ -86,19 +93,14 @@ void CS2Context::t_BombState()
 		return;
 	}
 
-	// Suppressed after a respawn: ignore this entity until its m_flC4Blow changes,
-	// which only happens when a new bomb is planted (each plant gets a unique blow time).
-	// We suppress by blow-time rather than pointer because CS2 reuses the entity address.
 	if (m_SuppressedC4Blow != 0.0f && newC4Blow == m_SuppressedC4Blow) {
 		m_Local->bomb = {};
 		return;
 	}
 	m_SuppressedC4Blow = 0.0f;
 
-	// Reject corrupt reads: site must be 0 (A) or 1 (B) once ticking
 	if (newTicking && newSite != 0 && newSite != 1) return;
 
-	// Latch plant time on rising edge
 	if (newTicking && !m_Local->bomb.isTicking) {
 		m_Local->bomb.plantTime    = C_PlantedC4::Clock::now();
 		m_Local->bomb.plantTimeSet = true;
@@ -115,10 +117,14 @@ void CS2Context::t_BombState()
 	m_Local->bomb.c4Blow         = newC4Blow;
 
 	if (newTicking && isValidPtr(m_Local->bomb.sceneNode)) {
-		g_Scatter->Add(m_Local->bomb.sceneNode + client_dll::CGameSceneNode::m_vecAbsOrigin,
-		               &m_Local->bomb.position);
-		g_Scatter->Execute();
-		g_Scatter->Clear();
+		if (specPos_ok && m_Local->bomb.sceneNode == prevSceneNode) {
+			m_Local->bomb.position = specPos;
+		} else {
+			g_Scatter->Add(m_Local->bomb.sceneNode + client_dll::CGameSceneNode::m_vecAbsOrigin,
+			               &m_Local->bomb.position);
+			g_Scatter->Execute();
+			g_Scatter->Clear();
+		}
 	}
 }
 
@@ -132,12 +138,10 @@ void CS2Context::t_BombState()
 void CS2Context::t_CarrierScan()
 {
 	ZoneScoped;
-	// Once planted, no carrier to find — the planted-bomb dot on the radar
-	// is the only post-plant cue; we deliberately do not keep tagging the
-	// planter on either the radar or the team panel.
 	if (m_Local->bomb.entity) {
 		m_Local->bomb.isCarried   = false;
 		m_Local->bomb.carrierSlot = -1;
+		m_CachedC4Wrapper = 0;
 		return;
 	}
 	if (!m_Local->entityList) return;
@@ -147,43 +151,62 @@ void CS2Context::t_CarrierScan()
 		m_Local->bomb.carrierSlot = -1;
 	};
 
-	// dwWeaponC4 resolves to a small wrapper (likely a "current/last C4" cache
-	// or list head) whose first 8 bytes hold the pointer to the actual C_C4
-	// entity. Confirmed empirically by hex-dumping both: the wrapper has its
-	// vtable at +0x10 (not +0x0) and 8-byte pointer-shaped data where you'd
-	// expect a 4-byte CHandle at +0x520; the deref'd address has a real
-	// vtable at +0x0 and a sensible CHandle at +0x520.
-	uint64_t c4Wrapper = 0;
+	// Merged pass 1+2: read dwWeaponC4 and speculatively deref cached wrapper
+	uint64_t c4Wrapper = 0, c4Weapon = 0;
 	g_Scatter->Add(g_ClientBase + client_dll::dwWeaponC4, &c4Wrapper);
+	if (isValidPtr(m_CachedC4Wrapper))
+		g_Scatter->Add(m_CachedC4Wrapper, &c4Weapon);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
-	if (!isValidPtr(c4Wrapper)) { clearCarrier(); return; }
 
-	uint64_t c4Weapon = 0;
-	g_Scatter->Add(c4Wrapper, &c4Weapon);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
+	if (!isValidPtr(c4Wrapper)) { clearCarrier(); m_CachedC4Wrapper = 0; return; }
+	if (c4Wrapper != m_CachedC4Wrapper) {
+		m_CachedC4Wrapper = c4Wrapper;
+		c4Weapon = 0;
+		g_Scatter->Add(c4Wrapper, &c4Weapon);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+	}
+	m_CachedC4Wrapper = c4Wrapper;
 	if (!isValidPtr(c4Weapon)) { clearCarrier(); return; }
+	m_CachedC4Weapon = c4Weapon;
 
+	// Merged pass 3+4+5: read ownerHandle and speculatively resolve the
+	// previously-cached handle's chunk + pawn in the same scatter call.
 	uint32_t ownerHandle = 0;
+	uint64_t chunkPtr = 0, ownerPawn = 0;
 	g_Scatter->Add(c4Weapon + client_dll::C_BaseEntity::m_hOwnerEntity, &ownerHandle);
+	bool specChunk = m_CachedOwnerHandle && m_CachedOwnerHandle != 0xFFFFFFFF;
+	if (specChunk) {
+		g_Scatter->Add(m_Local->entityList + 0x8 * ((m_CachedOwnerHandle & 0x7FFF) >> 9) + 16, &chunkPtr);
+		if (isValidPtr(m_CachedCarrierChunk))
+			g_Scatter->Add(m_CachedCarrierChunk + 0x70 * (m_CachedOwnerHandle & 0x1FF), &ownerPawn);
+	}
 	g_Scatter->Execute();
 	g_Scatter->Clear();
-	if (!ownerHandle || ownerHandle == 0xFFFFFFFF) { clearCarrier(); return; }
 
-	uint64_t chunkPtr = 0;
-	g_Scatter->Add(m_Local->entityList + 0x8 * ((ownerHandle & 0x7FFF) >> 9) + 16, &chunkPtr);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
-	if (!isValidPtr(chunkPtr)) { clearCarrier(); return; }
+	if (!ownerHandle || ownerHandle == 0xFFFFFFFF) { clearCarrier(); m_CachedOwnerHandle = 0; return; }
 
-	uint64_t ownerPawn = 0;
-	g_Scatter->Add(chunkPtr + 0x70 * (ownerHandle & 0x1FF), &ownerPawn);
-	g_Scatter->Execute();
-	g_Scatter->Clear();
+	if (ownerHandle != m_CachedOwnerHandle || !specChunk) {
+		m_CachedOwnerHandle = ownerHandle;
+		chunkPtr = 0;
+		g_Scatter->Add(m_Local->entityList + 0x8 * ((ownerHandle & 0x7FFF) >> 9) + 16, &chunkPtr);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+		if (!isValidPtr(chunkPtr)) { clearCarrier(); return; }
+		m_CachedCarrierChunk = chunkPtr;
+
+		ownerPawn = 0;
+		g_Scatter->Add(chunkPtr + 0x70 * (ownerHandle & 0x1FF), &ownerPawn);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+	} else {
+		m_CachedOwnerHandle  = ownerHandle;
+		m_CachedCarrierChunk = chunkPtr;
+	}
+
 	if (!isValidPtr(ownerPawn)) { clearCarrier(); return; }
 
-	// Match owner pawn against known player slots.
 	for (size_t i = 0; i < MAX_ENTITIES; i++) {
 		if (m_Local->players[i].pawnBase == ownerPawn) {
 			m_Local->bomb.isCarried   = true;

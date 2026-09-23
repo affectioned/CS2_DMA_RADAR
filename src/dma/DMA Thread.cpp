@@ -25,12 +25,14 @@ void DMA_Thread_Main()
 		return;
 	}
 
+	timeBeginPeriod(1);
 	while (bRunning)
 	{
-		std::this_thread::yield();
 		ZoneNamedN(__tick, "DMA_Tick", true);
-		g_GameContext->Tick(conn, std::chrono::steady_clock::now());
+		if (!g_GameContext->Tick(conn, std::chrono::steady_clock::now()))
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
+	timeEndPeriod(1);
 
 	conn->EndConnection();
 }
