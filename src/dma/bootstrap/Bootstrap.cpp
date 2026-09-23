@@ -23,6 +23,10 @@ namespace
 	constexpr const wchar_t* kRepoArchiveHost = L"github.com";
 	constexpr const wchar_t* kRepoArchivePath = L"/affectioned/CS2_DMA_RADAR/archive/refs/heads/main.zip";
 
+	constexpr const wchar_t* kTracyApiPath   = L"/repos/wolfpld/tracy/releases/latest";
+	constexpr const char*    kTracyNeedle    = "windows-";
+	const std::vector<std::wstring> kTracyTools = { L"tracy-capture.exe", L"tracy-csvexport.exe" };
+
 	const std::vector<std::wstring> kRequiredDlls = {
 		L"vmm.dll",
 		L"leechcore.dll",
@@ -359,6 +363,156 @@ namespace Bootstrap
 		}
 
 		Log::Info("[Bootstrap] Textures ready");
+		return true;
+	}
+	bool EnsureTracyTools()
+	{
+		const fs::path exeDir = ExeDir();
+		bool allPresent = true;
+		for (const auto& tool : kTracyTools)
+			if (!fs::exists(exeDir / tool)) { allPresent = false; break; }
+		if (allPresent) return true;
+
+		Log::Info("[Bootstrap] Tracy tools missing; fetching latest release...");
+
+		std::vector<BYTE> apiBody;
+		if (!HttpsGet(kGithubApiHost, kTracyApiPath, apiBody))
+		{
+			Log::Error("[Bootstrap] Failed to query Tracy releases API");
+			return false;
+		}
+
+		const std::string_view json(reinterpret_cast<const char*>(apiBody.data()), apiBody.size());
+		const std::string zipUrl = FindAssetUrl(json, kTracyNeedle);
+		if (zipUrl.empty())
+		{
+			Log::Error("[Bootstrap] Could not find Windows asset in Tracy release");
+			return false;
+		}
+		Log::Info("[Bootstrap] Downloading {}", zipUrl);
+
+		std::wstring zipHost, zipPath;
+		if (!SplitHttpsUrl(zipUrl, zipHost, zipPath)) return false;
+
+		std::vector<BYTE> zipBytes;
+		if (!HttpsGet(zipHost, zipPath, zipBytes)) return false;
+
+		wchar_t tempRoot[MAX_PATH]{};
+		GetTempPathW(MAX_PATH, tempRoot);
+		const fs::path staging = fs::path(tempRoot) / L"cs2radar_tracy";
+		std::error_code ec;
+		fs::remove_all(staging, ec);
+		fs::create_directories(staging, ec);
+
+		const fs::path zipFile = staging / L"tracy.zip";
+		{
+			std::ofstream out(zipFile, std::ios::binary);
+			out.write(reinterpret_cast<const char*>(zipBytes.data()), zipBytes.size());
+		}
+
+		const fs::path extractDir = staging / L"extracted";
+		if (!ExtractZip(zipFile, extractDir))
+		{
+			Log::Error("[Bootstrap] Tracy zip extraction failed");
+			fs::remove_all(staging, ec);
+			return false;
+		}
+
+		for (auto it = fs::recursive_directory_iterator(extractDir, ec);
+			it != fs::recursive_directory_iterator(); it.increment(ec))
+		{
+			if (ec) { ec.clear(); continue; }
+			if (!it->is_regular_file()) continue;
+			for (const auto& want : kTracyTools)
+			{
+				if (_wcsicmp(it->path().filename().c_str(), want.c_str()) != 0) continue;
+				fs::copy_file(it->path(), exeDir / want, fs::copy_options::overwrite_existing, ec);
+				if (!ec) Log::Info("[Bootstrap] Installed {}", Narrow(want));
+				ec.clear();
+			}
+		}
+
+		fs::remove_all(staging, ec);
+
+		for (const auto& tool : kTracyTools)
+			if (!fs::exists(exeDir / tool)) {
+				Log::Error("[Bootstrap] {} still missing after install", Narrow(tool));
+				return false;
+			}
+
+		Log::Info("[Bootstrap] Tracy tools ready");
+		return true;
+	}
+
+	bool RunTracySession(int durationSec)
+	{
+		const fs::path exeDir = ExeDir();
+		const fs::path csvexport = exeDir / L"tracy-csvexport.exe";
+		const fs::path traceFile = exeDir / L"profile.tracy";
+		const fs::path reportFile = exeDir / L"profile_report.txt";
+
+		if (!fs::exists(csvexport))
+		{
+			Log::Error("[Tracy] tracy-csvexport.exe not found");
+			return false;
+		}
+		if (!fs::exists(traceFile))
+		{
+			Log::Error("[Tracy] profile.tracy not found — capture may have failed");
+			return false;
+		}
+
+		Log::Info("[Tracy] Exporting trace to CSV...");
+
+		std::wstring csvCmd = L"\"" + csvexport.wstring() + L"\" \""
+			+ traceFile.wstring() + L"\"";
+		std::wstring mutableCsvCmd = csvCmd;
+
+		HANDLE hReadPipe, hWritePipe;
+		SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE };
+		CreatePipe(&hReadPipe, &hWritePipe, &sa, 0);
+		SetHandleInformation(hReadPipe, HANDLE_FLAG_INHERIT, 0);
+
+		STARTUPINFOW si{ sizeof(si) };
+		si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+		si.wShowWindow = SW_HIDE;
+		si.hStdOutput = hWritePipe;
+		si.hStdError = hWritePipe;
+		PROCESS_INFORMATION pi{};
+
+		if (!CreateProcessW(nullptr, mutableCsvCmd.data(), nullptr, nullptr, TRUE,
+			CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+		{
+			Log::Error("[Tracy] Failed to launch tracy-csvexport");
+			CloseHandle(hReadPipe);
+			CloseHandle(hWritePipe);
+			return false;
+		}
+		CloseHandle(pi.hThread);
+		CloseHandle(hWritePipe);
+
+		std::string csvOutput;
+		char buf[4096];
+		DWORD bytesRead;
+		while (ReadFile(hReadPipe, buf, sizeof(buf), &bytesRead, nullptr) && bytesRead > 0)
+			csvOutput.append(buf, bytesRead);
+		CloseHandle(hReadPipe);
+
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		CloseHandle(pi.hProcess);
+
+		std::ofstream report(reportFile);
+		report << "=== Tracy Profile Report ===\n";
+		report << "Duration: " << durationSec << "s\n";
+		report << "Trace file: profile.tracy\n\n";
+		report << "--- Raw CSV Zone Data ---\n";
+		report << csvOutput << "\n";
+		report << "--- End ---\n\n";
+		report << "Paste this into an LLM conversation with the source code.\n";
+		report << "Ask: which zones dominate wall time? Are any DMA scatter reads >1ms mean?\n";
+		report << "Are timer callbacks (t_*) running longer than their interval?\n";
+
+		Log::Info("[Tracy] Report written to: {}", Narrow(reportFile.wstring()));
 		return true;
 	}
 } // namespace Bootstrap

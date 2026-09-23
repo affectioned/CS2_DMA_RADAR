@@ -10,8 +10,24 @@
 
 std::atomic<bool> bRunning{ true };
 
-int main()
+int main(int argc, char* argv[])
 {
+	bool tracyMode = false;
+	int  tracyDuration = 30;
+
+	for (int i = 1; i < argc; ++i)
+	{
+		if (strcmp(argv[i], "--tracy") == 0)
+		{
+			tracyMode = true;
+			if (i + 1 < argc)
+			{
+				int d = atoi(argv[i + 1]);
+				if (d > 0) { tracyDuration = d; ++i; }
+			}
+		}
+	}
+
 	{
 		wchar_t exePath[MAX_PATH]{};
 		GetModuleFileNameW(nullptr, exePath, MAX_PATH);
@@ -24,6 +40,15 @@ int main()
 	if (!Bootstrap::EnsureRuntimeDlls()) {
 		Log::Error("Required runtime DLLs could not be obtained; aborting");
 		return 1;
+	}
+
+	if (tracyMode)
+	{
+		Log::Info("Tracy profiling enabled ({}s capture)", tracyDuration);
+		if (!Bootstrap::EnsureTracyTools()) {
+			Log::Error("Could not obtain Tracy tools; continuing without profiling");
+			tracyMode = false;
+		}
 	}
 
 	gui::CreateAppWindow();
@@ -59,6 +84,38 @@ int main()
 	g_GameContext = new CS2Context(*game, gameMutex);
 	std::thread DMAThread(DMA_Thread_Main);
 
+	HANDLE hTracyProcess = nullptr;
+	if (tracyMode)
+	{
+		namespace fs = std::filesystem;
+		wchar_t exePath[MAX_PATH]{};
+		GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+		fs::path exeDir = fs::path(exePath).parent_path();
+		fs::path traceFile = exeDir / L"profile.tracy";
+
+		std::wstring cmd = L"\"" + (exeDir / L"tracy-capture.exe").wstring()
+			+ L"\" -a 127.0.0.1 -o \"" + traceFile.wstring()
+			+ L"\" -s " + std::to_wstring(tracyDuration);
+
+		STARTUPINFOW si{ sizeof(si) };
+		si.dwFlags = STARTF_USESHOWWINDOW;
+		si.wShowWindow = SW_HIDE;
+		PROCESS_INFORMATION pi{};
+		std::wstring mutableCmd = cmd;
+		if (CreateProcessW(nullptr, mutableCmd.data(), nullptr, nullptr, FALSE,
+			CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+		{
+			hTracyProcess = pi.hProcess;
+			CloseHandle(pi.hThread);
+			Log::Info("[Tracy] Capture process started (PID {})", pi.dwProcessId);
+		}
+		else
+		{
+			Log::Error("[Tracy] Failed to start tracy-capture");
+			tracyMode = false;
+		}
+	}
+
 	Log::Info("Render loop running - press END to exit");
 	while (bRunning)
 	{
@@ -70,6 +127,14 @@ int main()
 	}
 
 	DMAThread.join();
+
+	if (tracyMode && hTracyProcess)
+	{
+		Log::Info("[Tracy] Waiting for capture to finish...");
+		WaitForSingleObject(hTracyProcess, 60000);
+		CloseHandle(hTracyProcess);
+		Bootstrap::RunTracySession(tracyDuration);
+	}
 
 	delete g_GameContext;
 	g_GameContext = nullptr;
