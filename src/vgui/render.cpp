@@ -38,6 +38,7 @@ gui::RadarFrame gui::RadarFrame::compute(const CGame& game) {
 }
 
 void gui::gameLoop(const CGame& game) {
+	ZoneScoped;
 	std::string mapName = game.mapName;
 	if (mapName.empty()) return;
 
@@ -66,6 +67,7 @@ void gui::gameLoop(const CGame& game) {
 }
 
 void gui::renderMap(ID3D11ShaderResourceView* texture, const RadarFrame& f) {
+	ZoneScoped;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 	const ImVec2 display = ImGui::GetIO().DisplaySize;
@@ -138,6 +140,7 @@ void gui::renderMap(ID3D11ShaderResourceView* texture, const RadarFrame& f) {
 }
 
 void gui::renderPlayers(const CGame& game, const RadarFrame& f) {
+	ZoneScoped;
 	ImVec2      windowPos = ImGui::GetWindowPos();
 	const float localZ    = game.localPlayer.pawn.position.z;
 
@@ -258,6 +261,7 @@ void gui::renderPlayers(const CGame& game, const RadarFrame& f) {
 }
 
 void gui::renderBomb(const CGame& game, const RadarFrame& f) {
+	ZoneScoped;
 	ImVec2 windowPos = ImGui::GetWindowPos();
 	const C_PlantedC4& b = game.bomb;
 

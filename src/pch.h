@@ -31,6 +31,9 @@
 #include "vmmdll.h"
 #pragma comment(lib, "vmm")
 
+// Tracy profiler (on-demand: zero overhead until a profiler connects)
+#include <tracy/Tracy.hpp>
+
 // DMA layer — include order is mandatory: Log → DMA → Memory/ScatterRead → Memory/Process.
 #include "DMA/Logging/Log.h"
 #include "DMA/DMA.h"

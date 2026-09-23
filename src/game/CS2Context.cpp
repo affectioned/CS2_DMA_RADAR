@@ -82,6 +82,7 @@ bool CS2Context::Initialize(DMA_Connection* conn)
 void CS2Context::Tick(DMA_Connection* /*conn*/,
                       std::chrono::steady_clock::time_point now)
 {
+	ZoneScoped;
 	for (auto& t : m_Timers)
 		t.Tick(now);
 
@@ -94,6 +95,7 @@ void CS2Context::Tick(DMA_Connection* /*conn*/,
 
 void CS2Context::t_ModulePtrs()
 {
+	ZoneScoped;
 	uint64_t base = g_ClientBase;
 	uint64_t newEntityList = 0, newController = 0, newPawn = 0,
 	         newGlobalVars = 0, newC4Ptr = 0, newNetworkClient = 0,
@@ -157,6 +159,7 @@ void CS2Context::t_ModulePtrs()
 
 void CS2Context::t_MapName()
 {
+	ZoneScoped;
 	using clk = std::chrono::steady_clock;
 	static uint32_t      lastGen   = UINT32_MAX;
 	static clk::time_point lastWait{};
@@ -244,6 +247,7 @@ void CS2Context::t_MapName()
 // by t_ModulePtrs, so only the 1-byte state field is read here.
 void CS2Context::t_NetworkState()
 {
+	ZoneScoped;
 	if (!m_NetworkClientPtr) {
 		if (m_Local->signOnState != 0) {
 			Log::Info("[Network]: signOnState {} -> 0 (client null)", m_Local->signOnState);

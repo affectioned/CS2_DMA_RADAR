@@ -27,5 +27,7 @@ Desktop.ini
 # ========================
 tools/AssetExtractor/vrf/
 tools/AssetExtractor/.venv/
+tools/tracy/
 *.pyc
+*.tracy
 /.claude

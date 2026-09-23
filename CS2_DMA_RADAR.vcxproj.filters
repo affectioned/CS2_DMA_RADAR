@@ -28,6 +28,9 @@
     <Filter Include="vendor\dx">
       <UniqueIdentifier>{A7B8C9D0-E1F2-3456-0123-567890123456}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vendor\tracy">
+      <UniqueIdentifier>{B8C9D0E1-F2A3-4567-1234-678901234567}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -96,6 +99,9 @@
     <ClCompile Include="src\dma\logging\Log.cpp" />
     <ClCompile Include="src\dma\memory\Process.cpp" />
     <ClCompile Include="src\dma\memory\SigScan.cpp" />
+    <ClCompile Include="vendor\tracy\TracyClient.cpp">
+      <Filter>vendor\tracy</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h">

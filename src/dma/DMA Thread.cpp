@@ -30,6 +30,7 @@ void DMA_Thread_Main()
 	while (bRunning)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		ZoneNamedN(__tick, "DMA_Tick", true);
 		g_GameContext->Tick(conn, std::chrono::steady_clock::now());
 	}
 

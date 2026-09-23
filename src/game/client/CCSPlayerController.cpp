@@ -24,6 +24,7 @@ void CCSPlayerController::ReadName() {
 
 void CS2Context::t_PlayerCtrl()
 {
+	ZoneScoped;
 	if (m_Local->localPlayer.controllerBase)
 		m_Local->localPlayer.ctrl.Read(m_Local->localPlayer.controllerBase);
 	for (int i = 0; i < MAX_ENTITIES; i++)
@@ -39,6 +40,7 @@ void CS2Context::t_PlayerCtrl()
 
 void CS2Context::t_PlayerNames()
 {
+	ZoneScoped;
 	for (int i = 0; i < MAX_ENTITIES; i++)
 		if (m_Local->players[i].ctrl.nameAddr)
 			m_Local->players[i].ctrl.ReadName();

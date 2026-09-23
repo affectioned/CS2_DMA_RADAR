@@ -27,6 +27,7 @@ namespace {
 
 void CS2Context::t_EntityChain()
 {
+	ZoneScoped;
 	// Re-read dwEntityList fresh — never trust the cached value. The pointer at
 	// this static offset is stable but the value it holds can change on map load.
 	uint64_t entityList = 0;

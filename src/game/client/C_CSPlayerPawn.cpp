@@ -21,6 +21,7 @@ void C_CSPlayerPawn::Read(uint64_t base) {
 
 void CS2Context::t_LocalPlayerPos()
 {
+	ZoneScoped;
 	if (!m_Local->localPlayer.pawnBase) return;
 
 	uint8_t  curLifeState  = 255;
@@ -95,6 +96,7 @@ void CS2Context::t_LocalPlayerPos()
 
 void CS2Context::t_PlayerPositions()
 {
+	ZoneScoped;
 	for (int i = 0; i < MAX_ENTITIES; i++)
 		if (m_Local->players[i].pawnBase)
 			m_Local->players[i].pawn.Read(m_Local->players[i].pawnBase);
@@ -110,6 +112,7 @@ void CS2Context::t_PlayerPositions()
 
 void CS2Context::t_PlayerWeapons()
 {
+	ZoneScoped;
 	if (!m_Local->entityList) return;
 
 	// Pass 1: weapon services → active weapon handle

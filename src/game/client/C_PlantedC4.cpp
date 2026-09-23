@@ -11,6 +11,7 @@
 
 void CS2Context::t_BombState()
 {
+	ZoneScoped;
 	// Re-read dwPlantedC4 fresh — never cache this pointer across map transitions.
 	// Also piggy-back the round-end-winner read so we can detect "round just
 	// ended" without a separate scatter pass — the transition 0 → non-zero
@@ -130,6 +131,7 @@ void CS2Context::t_BombState()
 
 void CS2Context::t_CarrierScan()
 {
+	ZoneScoped;
 	// Once planted, no carrier to find — the planted-bomb dot on the radar
 	// is the only post-plant cue; we deliberately do not keep tagging the
 	// planter on either the radar or the team panel.

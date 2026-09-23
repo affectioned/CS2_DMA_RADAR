@@ -171,6 +171,7 @@ void gui::InitImGui() {
 }
 
 void gui::OnFrame(CGame& game, std::mutex& gameMutex) {
+	ZoneScoped;
 	MSG msg;
 	while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
 		::TranslateMessage(&msg);
@@ -219,6 +220,7 @@ void gui::OnFrame(CGame& game, std::mutex& gameMutex) {
 	g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, black);
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 	g_pSwapChain->Present(0, 0);
+	FrameMark;
 }
 
 void gui::Cleanup() {
