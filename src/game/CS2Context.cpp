@@ -42,7 +42,8 @@ bool CS2Context::Initialize(DMA_Connection* conn)
 		Log::Warn("[CS2Context]: {} base not found - signOnState/build number unavailable",
 		          GameModules::Engine2Dll);
 
-	m_Scatter = new ScatterRead(conn->GetHandle(), m_Process.GetPID());
+	m_VMMHandle = conn->GetHandle();
+	m_Scatter = new ScatterRead(m_VMMHandle, m_Process.GetPID());
 	g_Scatter  = m_Scatter;
 	m_Local    = std::make_unique<CGame>();
 
@@ -62,6 +63,9 @@ bool CS2Context::Initialize(DMA_Connection* conn)
 	// CTimer::m_LastExecutionTime defaults to epoch, so every timer fires on
 	// the very first tick — all state is populated before the render thread
 	// takes its first snapshot.
+	m_Timers.emplace_back(2000ms, [this]{                            // page table refresh for -norefresh
+		VMMDLL_ConfigSet(m_VMMHandle, VMMDLL_OPT_REFRESH_FREQ_TLB, 1);
+	});
 	m_Timers.emplace_back(1000ms, [this]{ t_ModulePtrs();      });  // seeds entity list + ptrs
 	m_Timers.emplace_back( 100ms, [this]{ t_MapName();          });  // depends on m_GlobalVarsPtr
 	m_Timers.emplace_back( 100ms, [this]{ t_EntityChain();      });  // depends on entityList

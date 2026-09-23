@@ -16,6 +16,7 @@ private:
 	// ── Infrastructure ────────────────────────────────────────────────────────
 	Process               m_Process;
 	ScatterRead*          m_Scatter = nullptr;
+	VMM_HANDLE            m_VMMHandle = nullptr;
 	CGame&                m_Game;       // shared with render thread (mutex-guarded)
 	std::mutex&           m_Mutex;
 	std::unique_ptr<CGame> m_Local;     // private working copy; timers write here
