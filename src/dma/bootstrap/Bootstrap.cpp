@@ -20,6 +20,9 @@ namespace
 	constexpr const wchar_t* kMemProcFSApiPath = L"/repos/ufrisk/MemProcFS/releases/latest";
 	constexpr const char*    kAssetNeedle      = "win_x64-latest.zip";
 
+	constexpr const wchar_t* kRepoArchiveHost = L"github.com";
+	constexpr const wchar_t* kRepoArchivePath = L"/affectioned/CS2_DMA_RADAR/archive/refs/heads/main.zip";
+
 	const std::vector<std::wstring> kRequiredDlls = {
 		L"vmm.dll",
 		L"leechcore.dll",
@@ -165,6 +168,31 @@ namespace
 		return exitCode == 0;
 	}
 
+	bool TexturesMissing(const fs::path& exeDir)
+	{
+		std::error_code ec;
+		const auto maps  = exeDir / L"textures" / L"maps";
+		const auto icons = exeDir / L"textures" / L"icons";
+		if (!fs::exists(maps) || !fs::exists(icons)) return true;
+		return fs::is_empty(maps, ec) || fs::is_empty(icons, ec);
+	}
+
+	fs::path FindTexturesDir(const fs::path& root)
+	{
+		std::error_code ec;
+		for (auto it = fs::recursive_directory_iterator(root, ec);
+			it != fs::recursive_directory_iterator(); it.increment(ec))
+		{
+			if (ec) { ec.clear(); continue; }
+			if (!it->is_directory()) continue;
+			if (it->path().filename() == L"textures" &&
+				fs::exists(it->path() / L"maps") &&
+				fs::exists(it->path() / L"icons"))
+				return it->path();
+		}
+		return {};
+	}
+
 	void InstallDllsFrom(const fs::path& extractedRoot, const fs::path& exeDir)
 	{
 		std::error_code ec;
@@ -263,6 +291,74 @@ namespace Bootstrap
 
 		fs::remove_all(staging, ec);
 		Log::Info("[Bootstrap] MemProcFS runtime DLLs ready");
+		return true;
+	}
+	bool EnsureTextures()
+	{
+		const fs::path exeDir = ExeDir();
+		if (!TexturesMissing(exeDir)) return true;
+
+		Log::Info("[Bootstrap] Textures missing; downloading from repository...");
+
+		std::vector<BYTE> zipBytes;
+		if (!HttpsGet(kRepoArchiveHost, kRepoArchivePath, zipBytes))
+		{
+			Log::Error("[Bootstrap] Failed to download repository archive");
+			return false;
+		}
+		Log::Info("[Bootstrap] Downloaded {:.1f} MB, extracting...",
+			zipBytes.size() / (1024.0 * 1024.0));
+
+		wchar_t tempRoot[MAX_PATH]{};
+		GetTempPathW(MAX_PATH, tempRoot);
+		const fs::path staging = fs::path(tempRoot) / L"cs2radar_textures";
+		std::error_code ec;
+		fs::remove_all(staging, ec);
+		fs::create_directories(staging, ec);
+
+		const fs::path zipFile = staging / L"repo.zip";
+		{
+			std::ofstream out(zipFile, std::ios::binary);
+			out.write(reinterpret_cast<const char*>(zipBytes.data()), zipBytes.size());
+		}
+
+		const fs::path extractDir = staging / L"extracted";
+		if (!ExtractZip(zipFile, extractDir))
+		{
+			Log::Error("[Bootstrap] Archive extraction failed");
+			fs::remove_all(staging, ec);
+			return false;
+		}
+
+		const fs::path srcTextures = FindTexturesDir(extractDir);
+		if (srcTextures.empty())
+		{
+			Log::Error("[Bootstrap] Could not locate textures in archive");
+			fs::remove_all(staging, ec);
+			return false;
+		}
+
+		const fs::path dstTextures = exeDir / L"textures";
+		fs::create_directories(dstTextures / L"maps", ec);
+		fs::create_directories(dstTextures / L"icons", ec);
+
+		fs::copy(srcTextures / L"maps", dstTextures / L"maps",
+			fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+		if (ec) { Log::Warn("[Bootstrap] maps copy: {}", ec.message()); ec.clear(); }
+
+		fs::copy(srcTextures / L"icons", dstTextures / L"icons",
+			fs::copy_options::recursive | fs::copy_options::overwrite_existing, ec);
+		if (ec) { Log::Warn("[Bootstrap] icons copy: {}", ec.message()); ec.clear(); }
+
+		fs::remove_all(staging, ec);
+
+		if (TexturesMissing(exeDir))
+		{
+			Log::Error("[Bootstrap] Textures still missing after install");
+			return false;
+		}
+
+		Log::Info("[Bootstrap] Textures ready");
 		return true;
 	}
 } // namespace Bootstrap

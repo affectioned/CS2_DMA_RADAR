@@ -38,6 +38,10 @@ int main()
 	gui::ShowAppWindow();
 	gui::InitImGui();
 
+	if (!Bootstrap::EnsureTextures()) {
+		Log::Warn("Texture bootstrap failed; maps/icons may be missing");
+	}
+
 	Log::Info("Loading map bounds and textures");
 	gui::loadMapBounds();
 	gui::loadTextures();

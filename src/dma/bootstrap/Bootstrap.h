@@ -3,4 +3,5 @@
 namespace Bootstrap
 {
 	bool EnsureRuntimeDlls();
+	bool EnsureTextures();
 }
