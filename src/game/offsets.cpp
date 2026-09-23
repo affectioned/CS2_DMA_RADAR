@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "offsets.h"
 
-// Compiled-in offset values. Used at startup until updater::sigscanOffsets()
+// Compiled-in offset values. Used at startup until updater::resolveOffsets()
 // (for dw*) and updater::fetchClassOffsets() (for class members) overwrite
 // them. Values are taken from the cs2-dumper snapshot at the time of build,
-// and serve as a fallback when both the cs2-dumper HTTP fetch and the local
-// disk cache are unavailable.
+// and serve as a fallback when both the HTTP fetch and the local disk cache
+// are unavailable.
 
 namespace client_dll {
 	// ── Module-level RVA pointers ────────────────────────────────────────────

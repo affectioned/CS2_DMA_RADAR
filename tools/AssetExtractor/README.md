@@ -1,6 +1,6 @@
 # AssetExtractor
 
-Extracts CS2 radar images and weapon icons directly from the game's VPK files and outputs PNGs ready for use alongside CS2 DMA Radar.
+Extracts CS2 radar images and weapon icons directly from the game's VPK files and outputs PNGs ready for use alongside CS2 Radar.
 
 ## Requirements
 
@@ -67,7 +67,7 @@ textures/
     ...
 ```
 
-Place the `textures/` folder alongside `CS2_DMA_RADAR.exe` at runtime. The radar overlay loads all maps and icons automatically — no code changes needed when new maps or weapons are added, just re-run the extractor.
+Place the `textures/` folder alongside the `.exe` at runtime. The radar overlay loads all maps and icons automatically — no code changes needed when new maps or weapons are added, just re-run the extractor.
 
 ## Picking up Valve updates
 

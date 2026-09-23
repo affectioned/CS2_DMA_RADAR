@@ -2,7 +2,7 @@
 """
 CS2 Asset Extractor
 Extracts radar images and weapon icons from CS2 VPK files and outputs PNGs
-ready for use alongside GrimApostles CS2 (place the output textures/ folder
+ready for use alongside CS2 Radar (place the output textures/ folder
 next to the .exe).
 
 Requires VRF Source2Viewer-CLI.exe in tools/AssetExtractor/vrf/ — see README.md.

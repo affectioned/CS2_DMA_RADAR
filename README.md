@@ -1,6 +1,6 @@
 CS2 DMA Radar
 ---
-A DMA-based radar for Counter-Strike 2 built with ImGui and DirectX 11. Uses PCILeech/MemProcFS to read game memory via FPGA hardware. **Read-only — no writes to game memory.**
+An educational overlay for Counter-Strike 2 built with ImGui and DirectX 11. Demonstrates hardware-accelerated memory analysis using PCILeech/MemProcFS with FPGA devices. **Read-only — performs no writes.**
 
 **Maintained by affectioned** — GrimApostles no longer maintains this project and has deleted the original repository. This is now an independent continuation, not a fork.
 
@@ -11,9 +11,9 @@ A DMA-based radar for Counter-Strike 2 built with ImGui and DirectX 11. Uses PCI
 
 ---
 
-> **Educational Disclaimer**
+> **Disclaimer**
 >
-> Provided for educational and research purposes only. Demonstrates DMA memory reading via FPGA, DirectX 11 rendering with ImGui, and runtime offset resolution. Usage in online games may violate Terms of Service. **You are solely responsible for how you use this software.**
+> Provided strictly for educational and research purposes. Demonstrates hardware memory analysis via FPGA, DirectX 11 rendering with ImGui, and runtime data resolution techniques. Usage in online games may violate Terms of Service. **You are solely responsible for how you use this software.**
 
 ---
 

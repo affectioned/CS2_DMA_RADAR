@@ -43,9 +43,9 @@ namespace settings {
 }
 
 void gui::CreateAppWindow() {
-	wc = { sizeof(wc), CS_VREDRAW | CS_HREDRAW, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"CS2_DMA_RADAR", nullptr };
+	wc = { sizeof(wc), CS_VREDRAW | CS_HREDRAW, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"CS2Radar", nullptr };
 	::RegisterClassExW(&wc);
-	hwnd = ::CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"CS2_DMA_RADAR", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
+	hwnd = ::CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"CS2Radar", WS_POPUP, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
 	Log::Info("[GUI]: Window created");
 }
 
@@ -73,8 +73,8 @@ void gui::InitImGui() {
 	ImGui::GetIO().IniFilename = "CS2_DMA_RADAR.ini";
 
 	ImGuiSettingsHandler h;
-	h.TypeName   = "CS2_DMA_RADAR";
-	h.TypeHash   = ImHashStr("CS2_DMA_RADAR");
+	h.TypeName   = "CS2Radar";
+	h.TypeHash   = ImHashStr("CS2Radar");
 	h.ReadOpenFn = [](ImGuiContext*, ImGuiSettingsHandler*, const char*) -> void* { return (void*)1; };
 	struct BoolKey  { const char* key; bool*  val; };
 	struct FloatKey { const char* key; float* val; };
@@ -126,7 +126,7 @@ void gui::InitImGui() {
 			0x0400, 0x052F,  // Cyrillic + Cyrillic Supplement
 			0,
 		};
-		// 16px Segoe UI Semibold — the radar runs on a second-monitor DMA box,
+		// 16px Segoe UI Semibold — the overlay runs on a second monitor,
 		// so glance-readability matters more than a tight UI. Microsoft uses
 		// the truncated "segui" prefix for the semibold/light variants
 		// (seguisb.ttf, not segoeuisb.ttf). Try semibold first; fall back to
@@ -249,8 +249,8 @@ void gui::RenderControlPanel() {
 	);
 
 	// Title
-	ImGui::SetCursorPosX((panelW - ImGui::CalcTextSize("CS2_DMA_RADAR").x) * 0.5f);
-	ImGui::TextColored(ImVec4(0.5f, 0.78f, 1.0f, 1.0f), "CS2_DMA_RADAR");
+	ImGui::SetCursorPosX((panelW - ImGui::CalcTextSize("CS2Radar").x) * 0.5f);
+	ImGui::TextColored(ImVec4(0.5f, 0.78f, 1.0f, 1.0f), "CS2Radar");
 
 	ImGui::Spacing();
 	ImGui::Separator();
@@ -284,7 +284,7 @@ void gui::RenderControlPanel() {
 	if (ImGui::CollapsingHeader("Settings")) {
 		ImGui::Spacing();
 
-		if (ImGui::BeginTable("##esp", 3,
+		if (ImGui::BeginTable("##overlay", 3,
 		    ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
 		{
 			ImGui::TableSetupColumn("");

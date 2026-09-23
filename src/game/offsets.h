@@ -2,13 +2,13 @@
 #include <cstddef>
 
 // All offsets below are populated at startup:
-//   - dw* RVA pointers via signature scan (updater::sigscanOffsets)
+//   - dw* RVA pointers via pattern matching (updater::resolveOffsets)
 //   - class member offsets via HTTP fetch + cache (updater::fetchClassOffsets)
 // Compiled-in values act as fallbacks when both network and cache are unavailable.
 
 namespace client_dll {
 	// ── Module-level RVA pointers ────────────────────────────────────────────
-	// dw* with no sigscan signature in updater.cpp are populated from
+	// dw* with no pattern in updater.cpp are populated from
 	// cs2-dumper's offsets.hpp (HTTP fetch with ETag cache, same pattern as
 	// class members).
 	extern std::ptrdiff_t dwEntityList;
@@ -17,7 +17,7 @@ namespace client_dll {
 	extern std::ptrdiff_t dwGlobalVars;
 	extern std::ptrdiff_t dwPlantedC4;
 	extern std::ptrdiff_t dwWeaponC4;          // global C4 weapon entity ptr (held, not planted)
-	extern std::ptrdiff_t dwGameRules;         // C_CSGameRulesProxy* — sigscanned
+	extern std::ptrdiff_t dwGameRules;         // C_CSGameRulesProxy* — pattern-resolved
 
 	// ── Class member offsets ─────────────────────────────────────────────────
 

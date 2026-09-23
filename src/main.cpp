@@ -14,11 +14,11 @@ int main()
 	{
 		wchar_t exePath[MAX_PATH]{};
 		GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-		auto logPath = std::filesystem::path(exePath).parent_path() / "cs2radar_dma.log";
+		auto logPath = std::filesystem::path(exePath).parent_path() / "cs2radar.log";
 		Log::Init(logPath.wstring());
 	}
 
-	Log::Info("Starting CS2_DMA_RADAR");
+	Log::Info("Starting CS2 Radar");
 
 	gui::CreateAppWindow();
 
@@ -43,7 +43,7 @@ int main()
 		moduleFut.wait();
 	}
 
-	Log::Info("Starting DMA thread");
+	Log::Info("Starting acquisition thread");
 	auto       game = std::make_unique<CGame>();
 	std::mutex gameMutex;
 	g_GameContext = new CS2Context(*game, gameMutex);

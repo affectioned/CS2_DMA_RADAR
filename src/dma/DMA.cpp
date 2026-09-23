@@ -24,16 +24,16 @@ bool DMA_Connection::EndConnection()
 DMA_Connection::DMA_Connection()
 {
 
-    Log::Info("Connecting to DMA...");
+    Log::Info("Connecting to device...");
 
     try {
         LPCSTR args[] = { "", "-device", "FPGA", "-memmap", "auto", "-waitinitialize" };
         m_VMMHandle = VMMDLL_Initialize(6, args);
 
         if (!m_VMMHandle)
-            throw std::runtime_error("VMMDLL_Initialize failed (Check FPGA connection/drivers)");
+            throw std::runtime_error("VMMDLL_Initialize failed (check device connection/drivers)");
 
-        Log::Info("Connected to DMA!");
+        Log::Info("Device connected.");
     }
     catch (const std::exception& e) {
         Log::Error("--- CRITICAL ERROR ---");
@@ -49,5 +49,5 @@ DMA_Connection::~DMA_Connection()
 
 	m_VMMHandle = nullptr;
 
-	Log::Info("Disconnected from DMA!");
+	Log::Info("Device disconnected.");
 }

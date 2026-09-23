@@ -46,7 +46,7 @@ bool CS2Context::Initialize(DMA_Connection* conn)
 	g_Scatter  = m_Scatter;
 	m_Local    = std::make_unique<CGame>();
 
-	updater::sigscanOffsets(conn, &m_Process);
+	updater::resolveOffsets(conn, &m_Process);
 
 	// Build-number log lets us cross-check the cs2-dumper snapshot when offsets drift.
 	if (m_Engine2Base) {

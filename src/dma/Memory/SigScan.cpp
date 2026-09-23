@@ -35,7 +35,7 @@ std::vector<int> GetPidListFromName(DMA_Connection* Conn, std::string name)
 
 	if (!VMMDLL_ProcessGetInformationAll(Conn->GetHandle(), &process_info, &total_processes))
 	{
-		Log::Warn("[SigScan]: Failed to enumerate processes while searching for \"{}\"", name);
+		Log::Warn("[Process]: Failed to enumerate processes while searching for \"{}\"", name);
 		return list;
 	}
 

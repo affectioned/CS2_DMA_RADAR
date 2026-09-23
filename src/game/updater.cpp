@@ -25,7 +25,7 @@ HttpResult httpGet(const char* url, const std::string& ifNoneMatch)
 {
     HttpResult r{};
 
-    HINTERNET hNet = InternetOpenA("GrimApostles", INTERNET_OPEN_TYPE_PRECONFIG,
+    HINTERNET hNet = InternetOpenA("CS2Radar", INTERNET_OPEN_TYPE_PRECONFIG,
                                    nullptr, nullptr, 0);
     if (!hNet) return r;
 
@@ -175,8 +175,8 @@ const OffsetSpec kClassSpecs[] = {
     { "C_CSGameRules",           "m_iRoundEndWinnerTeam",   &client_dll::C_CSGameRules::m_iRoundEndWinnerTeam },
 };
 
-// Each offset has exactly one source: sigscan (live client.dll resolution) OR
-// fetch (cs2-dumper offsets.hpp). Don't list sigscanned fields here — keeping
+// Each offset has exactly one source: pattern-match (live client.dll resolution) OR
+// fetch (cs2-dumper offsets.hpp). Don't list pattern-resolved fields here — keeping
 // two sources for the same field creates a stale-data trap.
 const OffsetSpec kModuleSpecs[] = {
     { "engine2_dll", "dwBuildNumber",                   &engine2_dll::dwBuildNumber },
@@ -307,7 +307,7 @@ static ptrdiff_t ResolveRIP(DMA_Connection* Conn, DWORD pid,
 // Scan for sig, resolve the RIP-relative displacement, write target.
 // On sig failure, preserve the existing target value (which may have been
 // populated earlier by updater::fetchModuleOffsets from cs2-dumper). This
-// gives sigscan-first / fetch-second / compiled-in-third resilience.
+// gives pattern-match-first / fetch-second / compiled-in-third resilience.
 static void ResolveOffset(DMA_Connection* Conn, DWORD pid, uintptr_t clientBase, uintptr_t clientEnd,
                            const char* name, ptrdiff_t& target,
                            const char* sig, int dispOff, int instrSz)
@@ -332,9 +332,9 @@ static void ResolveOffset(DMA_Connection* Conn, DWORD pid, uintptr_t clientBase,
     }
 }
 
-// ── sigscanOffsets ────────────────────────────────────────────────────────────
+// ── resolveOffsets ────────────────────────────────────────────────────────────
 
-bool updater::sigscanOffsets(DMA_Connection* conn, Process* proc)
+bool updater::resolveOffsets(DMA_Connection* conn, Process* proc)
 {
     Log::Info("[Updater]: Scanning RVA pointers...");
 

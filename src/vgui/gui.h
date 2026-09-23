@@ -103,10 +103,10 @@ namespace icons {
 }
 
 namespace settings {
-	// Per-team ESP toggles. The 'Enemies' flag controls overlay on players
+	// Per-team overlay toggles. The 'Enemies' flag controls overlay on players
 	// whose teamID differs from the local player's; 'Friendlies' covers the
-	// rest (own team + the local player). Each ESP element checks the right
-	// flag based on whether it's enemy or friendly.
+	// rest (own team + the local player). Each overlay element checks the
+	// right flag based on whether it's enemy or friendly.
 	extern bool  showAimLinesEnemies,    showAimLinesFriendlies;
 	extern bool  showWeaponIconsEnemies, showWeaponIconsFriendlies;
 	extern bool  showHealthBarsEnemies,  showHealthBarsFriendlies;
