@@ -53,7 +53,24 @@ void gui::gameLoop(const CGame& game) {
 	}
 
 	auto texIt = maps::mapTextures.find(mapName);
-	if (texIt == maps::mapTextures.end() || !texIt->second) return;
+	if (texIt == maps::mapTextures.end() || !texIt->second) {
+		ImVec2 display = ImGui::GetIO().DisplaySize;
+		ImGui::SetNextWindowPos(ImVec2(0, 0));
+		ImGui::SetNextWindowSize(display);
+		ImGui::Begin("##unsupported", nullptr,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+			ImGuiWindowFlags_NoBackground);
+		const char* msg = "Unsupported map";
+		ImVec2 textSize = ImGui::CalcTextSize(msg);
+		ImVec2 nameSize = ImGui::CalcTextSize(game.mapName.c_str());
+		ImGui::SetCursorPos(ImVec2((display.x - textSize.x) * 0.5f, display.y * 0.5f - textSize.y));
+		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%s", msg);
+		ImGui::SetCursorPosX((display.x - nameSize.x) * 0.5f);
+		ImGui::TextDisabled("%s", game.mapName.c_str());
+		ImGui::End();
+		return;
+	}
 
 	ImVec2 display = ImGui::GetIO().DisplaySize;
 	maps::radarSize = std::min(display.x, display.y);
