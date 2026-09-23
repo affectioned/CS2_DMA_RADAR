@@ -53,7 +53,14 @@ namespace
 
 	std::string Narrow(std::wstring_view w)
 	{
-		return { w.begin(), w.end() };
+		if (w.empty()) return {};
+		int needed = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
+			nullptr, 0, nullptr, nullptr);
+		if (needed <= 0) return {};
+		std::string s(needed, '\0');
+		WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(),
+			s.data(), needed, nullptr, nullptr);
+		return s;
 	}
 
 	struct Handle

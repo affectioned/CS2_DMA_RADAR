@@ -336,7 +336,7 @@ void gui::RenderControlPanel() {
 
 // ─── Team Panels ──────────────────────────────────────────────────────────────
 
-static void renderPlayerEntry(const CPlayer& p, const CGame& game, bool isEnemy, bool isCarrier = false) {
+static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEnemy, bool isCarrier = false) {
 	constexpr float kDotR   = 5.0f;
 	constexpr float kIndent = kDotR * 2.0f + 8.0f;
 	constexpr float kBarH   = 3.0f;

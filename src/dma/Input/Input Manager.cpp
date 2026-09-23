@@ -59,11 +59,11 @@ bool c_keys::InitKeyboard(DMA_Connection* Conn)
 			int relative = _relative;
 			uintptr_t g_session_global_slots = g_session_ptr + 7 + relative;
 			uintptr_t user_session_state = 0;
-			for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
 			{
 				uintptr_t Deref1 = ReadFromPID<uintptr_t>(Conn, g_session_global_slots, pid);
 
-				uintptr_t Deref2 = ReadFromPID<uintptr_t>(Conn, Deref1 + 8 * i, pid);
+				uintptr_t Deref2 = ReadFromPID<uintptr_t>(Conn, Deref1 + 8 * j, pid);
 
 				uintptr_t Deref3 = ReadFromPID<uintptr_t>(Conn, Deref2, pid);
 
@@ -113,10 +113,10 @@ bool c_keys::InitKeyboard(DMA_Connection* Conn)
 	{
 		PVMMDLL_MAP_EAT eat_map = NULL;
 		PVMMDLL_MAP_EATENTRY eat_map_entry;
-		DWORD PID = 0x0;
-		VMMDLL_PidGetFromName(Conn->GetHandle(), "winlogon.exe", &PID);
+		DWORD pid10 = 0x0;
+		VMMDLL_PidGetFromName(Conn->GetHandle(), "winlogon.exe", &pid10);
 
-		bool result = VMMDLL_Map_GetEATU(Conn->GetHandle(), PID | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, const_cast<LPSTR>("win32kbase.sys"), &eat_map);
+		bool result = VMMDLL_Map_GetEATU(Conn->GetHandle(), pid10 | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, const_cast<LPSTR>("win32kbase.sys"), &eat_map);
 		if (!result)
 			return false;
 
@@ -127,7 +127,7 @@ bool c_keys::InitKeyboard(DMA_Connection* Conn)
 			return false;
 		}
 
-		for (int i = 0; i < eat_map->cMap; i++)
+		for (DWORD i = 0; i < eat_map->cMap; i++)
 		{
 			eat_map_entry = eat_map->pMap + i;
 			if (strcmp(eat_map_entry->uszFunction, "gafAsyncKeyState") == 0)
@@ -143,8 +143,8 @@ bool c_keys::InitKeyboard(DMA_Connection* Conn)
 		if (gafAsyncKeyStateExport < 0x7FFFFFFFFFFF)
 		{
 			PVMMDLL_MAP_MODULEENTRY module_info;
-			auto result = VMMDLL_Map_GetModuleFromNameW(Conn->GetHandle(), PID | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, const_cast<LPWSTR>(L"win32kbase.sys"), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
-			if (!result)
+			auto modResult = VMMDLL_Map_GetModuleFromNameW(Conn->GetHandle(), pid10 | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, const_cast<LPWSTR>(L"win32kbase.sys"), &module_info, VMMDLL_MODULE_FLAG_NORMAL);
+			if (!modResult)
 			{
 				Log::Warn("[Input]: Win10 path - failed to get win32kbase.sys module info");
 				return false;
@@ -153,7 +153,7 @@ bool c_keys::InitKeyboard(DMA_Connection* Conn)
 			VMMDLL_MemFree(module_info);
 
 			char str[261];
-			if (!VMMDLL_PdbLoad(Conn->GetHandle(), PID | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, win32kbase_va, str))
+			if (!VMMDLL_PdbLoad(Conn->GetHandle(), pid10 | VMMDLL_PID_PROCESS_WITH_KERNELMEMORY, win32kbase_va, str))
 			{
 				Log::Warn("[Input]: Win10 path - failed to load PDB for win32kbase.sys");
 				return false;
