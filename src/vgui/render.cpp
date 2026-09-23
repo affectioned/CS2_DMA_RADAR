@@ -40,7 +40,21 @@ gui::RadarFrame gui::RadarFrame::compute(const CGame& game) {
 void gui::gameLoop(const CGame& game) {
 	ZoneScoped;
 	std::string mapName = game.mapName;
-	if (mapName.empty()) return;
+	if (mapName.empty()) {
+		ImVec2 display = ImGui::GetIO().DisplaySize;
+		ImGui::SetNextWindowPos(ImVec2(0, 0));
+		ImGui::SetNextWindowSize(display);
+		ImGui::Begin("##waiting", nullptr,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+			ImGuiWindowFlags_NoBackground);
+		const char* msg = "Waiting for map...";
+		ImVec2 textSize = ImGui::CalcTextSize(msg);
+		ImGui::SetCursorPos(ImVec2((display.x - textSize.x) * 0.5f, display.y * 0.5f - textSize.y * 0.5f));
+		ImGui::TextDisabled("%s", msg);
+		ImGui::End();
+		return;
+	}
 
 	auto boundsIt = maps::mapBounds.find(mapName);
 	if (boundsIt != maps::mapBounds.end()) {
