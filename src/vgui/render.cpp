@@ -63,11 +63,11 @@ void gui::gameLoop(const CGame& game) {
 			ImGuiWindowFlags_NoBackground);
 		const char* msg = "Unsupported map";
 		ImVec2 textSize = ImGui::CalcTextSize(msg);
-		ImVec2 nameSize = ImGui::CalcTextSize(game.mapName.c_str());
+		ImVec2 nameSize = ImGui::CalcTextSize(mapName.c_str());
 		ImGui::SetCursorPos(ImVec2((display.x - textSize.x) * 0.5f, display.y * 0.5f - textSize.y));
 		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%s", msg);
 		ImGui::SetCursorPosX((display.x - nameSize.x) * 0.5f);
-		ImGui::TextDisabled("%s", game.mapName.c_str());
+		ImGui::TextDisabled("%s", mapName.c_str());
 		ImGui::End();
 		return;
 	}
