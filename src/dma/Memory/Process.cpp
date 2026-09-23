@@ -3,6 +3,8 @@
 #include "DMA/DMA.h"
 #include "Process.h"
 
+extern std::atomic<bool> bRunning;
+
 bool Process::GetProcessInfo(const std::string& processName,
                               const std::vector<std::string>& moduleNames,
                               DMA_Connection* conn)
@@ -11,7 +13,7 @@ bool Process::GetProcessInfo(const std::string& processName,
 
 	m_PID = 0;
 
-	while (true)
+	while (bRunning)
 	{
 		VMMDLL_PidGetFromName(conn->GetHandle(), processName.c_str(), &m_PID);
 
@@ -25,7 +27,7 @@ bool Process::GetProcessInfo(const std::string& processName,
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
-	return true;
+	return m_PID != 0;
 }
 
 uintptr_t Process::GetModuleBase(const std::string& name) const
@@ -58,7 +60,7 @@ bool Process::PopulateModules(const std::vector<std::string>& names, DMA_Connect
 		return true;
 	};
 
-	while (!allResolved())
+	while (bRunning && !allResolved())
 	{
 		for (const auto& name : names)
 		{
@@ -66,7 +68,8 @@ bool Process::PopulateModules(const std::vector<std::string>& names, DMA_Connect
 				m_Modules[name] = VMMDLL_ProcessGetModuleBaseU(handle, m_PID, name.c_str());
 		}
 
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+		if (!allResolved())
+			std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
 	for (const auto& name : names)
