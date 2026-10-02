@@ -155,6 +155,7 @@ const OffsetSpec kClassSpecs[] = {
     { "CCSPlayerController",     "m_sSanitizedPlayerName",  &client_dll::CCSPlayerController::m_sSanitizedPlayerName },
     { "CCSPlayerController",     "m_iCompTeammateColor",    &client_dll::CCSPlayerController::m_iCompTeammateColor },
     { "CCSPlayerController",     "m_hPlayerPawn",           &client_dll::CCSPlayerController::m_hPlayerPawn },
+    { "CCSPlayerController",     "m_hObserverPawn",         &client_dll::CCSPlayerController::m_hObserverPawn },
     { "CCSPlayerController",     "m_iPawnArmor",            &client_dll::CCSPlayerController::m_iPawnArmor },
     { "CCSPlayerController",     "m_bPawnHasDefuser",       &client_dll::CCSPlayerController::m_bPawnHasDefuser },
     { "CCSPlayerController",     "m_bPawnHasHelmet",        &client_dll::CCSPlayerController::m_bPawnHasHelmet },

@@ -22,6 +22,24 @@ void C_CSPlayerPawn::ReadStatus(uint64_t base) {
 	g_Scatter->Add(base + client_dll::C_BasePlayerPawn::m_pWeaponServices,       &weaponServicesPtr);
 }
 
+// CHandle → entity pointer. Two dependent reads, so two scatter executes.
+static uint64_t resolveHandle(uint64_t entityList, uint32_t handle)
+{
+	if (!entityList || !handle || handle == 0xFFFFFFFF) return 0;
+
+	uint64_t listEntry = 0;
+	g_Scatter->Add(entityList + 0x8 * ((handle & 0x7FFF) >> 9) + 16, &listEntry);
+	g_Scatter->Execute();
+	g_Scatter->Clear();
+	if (!isValidPtr(listEntry)) return 0;
+
+	uint64_t ent = 0;
+	g_Scatter->Add(listEntry + 0x70 * (handle & 0x1FF), &ent);
+	g_Scatter->Execute();
+	g_Scatter->Clear();
+	return isValidPtr(ent) ? ent : 0;
+}
+
 // ── t_LocalPlayerPos — 8 ms ───────────────────────────────────────────────────
 // Reads the local player's world position and view angles for low-latency
 // self-tracking. eyeAngles is required by the rotated-radar code path — it
@@ -32,54 +50,88 @@ void CS2Context::t_LocalPlayerPos()
 	ZoneScoped;
 	if (!m_Local->localPlayer.pawnBase) return;
 
-	uint8_t  curLifeState  = 255;
-	uint64_t observerSvcs  = 0;
+	// Spectate-follow chain state. While dead, our own pawn position freezes at
+	// the corpse and would strand the radar. CS2 gives the controller a separate
+	// C_CSObserverPawn (m_hObserverPawn), and it is *that* pawn's observer
+	// services that carry the spectate target — the corpse's m_pObserverServices
+	// never gets one, which is why reading it off the player pawn never worked.
+	//
+	// Both hops (handle → observer pawn, pawn → services) are cached, so the
+	// steady-state cost is three extra reads folded into the batch below and no
+	// extra scatter executes. After a handle changes, one hop re-resolves per
+	// tick, so lock-on takes ~3 ticks (~24 ms).
+	static uint32_t s_obsPawnHandle = 0;
+	static uint64_t s_obsPawnPtr    = 0;
+	static uint64_t s_obsSvcsPtr    = 0;
+
+	// Pointers the batch below reads through; the post-batch logic needs to know
+	// which ones were live at batch time to decide what the results belong to.
+	const uint64_t batchObsPawnPtr = s_obsPawnPtr;
+	const uint64_t batchObsSvcsPtr = s_obsSvcsPtr;
+
+	uint8_t  curLifeState    = 255;
+	uint32_t obsPawnHandle   = 0;
+	uint64_t obsSvcsPtr      = 0;
+	uint32_t obsTargetHandle = 0;
+
 	g_Scatter->Add(m_Local->localPlayer.pawnBase + client_dll::C_BasePlayerPawn::m_vOldOrigin,
 	               &m_Local->localPlayer.pawn.position);
 	g_Scatter->Add(m_Local->localPlayer.pawnBase + client_dll::C_CSPlayerPawn::m_angEyeAngles,
 	               &m_Local->localPlayer.pawn.eyeAngles);
 	g_Scatter->Add(m_Local->localPlayer.pawnBase + client_dll::C_BaseEntity::m_lifeState,
 	               &curLifeState);
-	g_Scatter->Add(m_Local->localPlayer.pawnBase + client_dll::C_BasePlayerPawn::m_pObserverServices,
-	               &observerSvcs);
+	if (m_Local->localPlayer.controllerBase)
+		g_Scatter->Add(m_Local->localPlayer.controllerBase + client_dll::CCSPlayerController::m_hObserverPawn,
+		               &obsPawnHandle);
+	if (batchObsPawnPtr)
+		g_Scatter->Add(batchObsPawnPtr + client_dll::C_BasePlayerPawn::m_pObserverServices,
+		               &obsSvcsPtr);
+	if (batchObsSvcsPtr)
+		g_Scatter->Add(batchObsSvcsPtr + client_dll::CPlayer_ObserverServices::m_hObserverTarget,
+		               &obsTargetHandle);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
-	// Spectate-follow: when the local player is dead, our own pawn position
-	// freezes at the corpse, which strands the radar. If we're spectating
-	// someone, resolve their pawn via m_hObserverTarget (CHandle → entity-list
-	// chunk → pawn ptr) and copy their already-tracked position/eyeAngles from
-	// players[] over our own. Three extra scatter executes are unavoidable here
-	// because each step depends on the previous read; only paid while dead.
-	if (curLifeState != 0 && isValidPtr(observerSvcs) && m_Local->entityList) {
-		uint32_t targetHandle = 0;
-		g_Scatter->Add(observerSvcs + client_dll::CPlayer_ObserverServices::m_hObserverTarget,
-		               &targetHandle);
-		g_Scatter->Execute();
-		g_Scatter->Clear();
+	if (curLifeState == 0) {
+		// Alive: drop the chain so a stale observer pawn from the previous death
+		// (or from the previous map) can never be read through.
+		s_obsPawnHandle = 0;
+		s_obsPawnPtr    = 0;
+		s_obsSvcsPtr    = 0;
+	}
+	else {
+		// Resolve the observer pawn pointer when the handle changes, and retry
+		// on a throttle if that resolve came back empty (torn read, or the pawn
+		// isn't networked yet) instead of staying stranded for the whole death.
+		static int s_retryIn = 0;
+		if (s_retryIn > 0) s_retryIn--;
+		const bool resolveFailed = !s_obsPawnPtr && obsPawnHandle &&
+		                           obsPawnHandle != 0xFFFFFFFF && s_retryIn == 0;
 
-		if (targetHandle && targetHandle != 0xFFFFFFFF) {
-			uint64_t listEntry = 0;
-			g_Scatter->Add(m_Local->entityList + 0x8 * ((targetHandle & 0x7FFF) >> 9) + 16,
-			               &listEntry);
-			g_Scatter->Execute();
-			g_Scatter->Clear();
+		if (obsPawnHandle != s_obsPawnHandle || resolveFailed) {
+			s_obsPawnHandle = obsPawnHandle;
+			s_obsPawnPtr    = resolveHandle(m_Local->entityList, obsPawnHandle);
+			s_obsSvcsPtr    = 0;
+			s_retryIn       = 32;   // ~256 ms at the 8 ms tick rate
+		}
+		else if (batchObsPawnPtr) {
+			s_obsSvcsPtr = isValidPtr(obsSvcsPtr) ? obsSvcsPtr : 0;
+		}
 
-			uint64_t targetPawn = 0;
-			if (isValidPtr(listEntry)) {
-				g_Scatter->Add(listEntry + 0x70 * (targetHandle & 0x1FF), &targetPawn);
-				g_Scatter->Execute();
-				g_Scatter->Clear();
-			}
-
-			if (isValidPtr(targetPawn)) {
-				for (size_t i = 0; i < MAX_ENTITIES; i++) {
-					if (m_Local->players[i].pawnBase == targetPawn) {
-						m_Local->localPlayer.pawn.position  = m_Local->players[i].pawn.position;
-						m_Local->localPlayer.pawn.eyeAngles = m_Local->players[i].pawn.eyeAngles;
-						break;
-					}
-				}
+		// Trust obsTargetHandle only if the services pointer it came from is
+		// still the current one. Match by entity-list slot against the pawn
+		// handles t_EntityChain already resolved — no extra reads needed — and
+		// copy the spectated player's tracked position/angles over our own.
+		if (batchObsSvcsPtr && batchObsSvcsPtr == s_obsSvcsPtr &&
+		    obsTargetHandle && obsTargetHandle != 0xFFFFFFFF)
+		{
+			const uint32_t slot = obsTargetHandle & 0x7FFF;
+			for (size_t i = 0; i < MAX_ENTITIES; i++) {
+				if (!m_Local->players[i].pawnBase) continue;
+				if ((m_Local->players[i].pawnHandle & 0x7FFF) != slot) continue;
+				m_Local->localPlayer.pawn.position  = m_Local->players[i].pawn.position;
+				m_Local->localPlayer.pawn.eyeAngles = m_Local->players[i].pawn.eyeAngles;
+				break;
 			}
 		}
 	}

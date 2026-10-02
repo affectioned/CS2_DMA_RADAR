@@ -49,6 +49,7 @@ namespace client_dll {
 		std::ptrdiff_t m_sSanitizedPlayerName = 0x878;
 		std::ptrdiff_t m_iCompTeammateColor   = 0x858;
 		std::ptrdiff_t m_hPlayerPawn          = 0x92C;
+		std::ptrdiff_t m_hObserverPawn        = 0x930;
 		std::ptrdiff_t m_iPawnArmor           = 0x93C;
 		std::ptrdiff_t m_bPawnHasDefuser      = 0x940;
 		std::ptrdiff_t m_bPawnHasHelmet       = 0x941;

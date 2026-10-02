@@ -51,6 +51,7 @@ namespace client_dll {
 		extern std::ptrdiff_t m_sSanitizedPlayerName; // CUtlString
 		extern std::ptrdiff_t m_iCompTeammateColor;   // int32
 		extern std::ptrdiff_t m_hPlayerPawn;          // CHandle<C_CSPlayerPawn>
+		extern std::ptrdiff_t m_hObserverPawn;        // CHandle<C_CSObserverPawn> — spectate camera pawn
 		extern std::ptrdiff_t m_iPawnArmor;           // int32
 		extern std::ptrdiff_t m_bPawnHasDefuser;      // bool
 		extern std::ptrdiff_t m_bPawnHasHelmet;       // bool
