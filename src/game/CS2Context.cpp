@@ -17,10 +17,52 @@ CS2Context::CS2Context(CGame& game, std::mutex& gameMutex)
 
 CS2Context::~CS2Context()
 {
-	g_Connected.store(false);
+	Shutdown();
+}
+
+bool CS2Context::IsAlive(DMA_Connection* conn)
+{
+	return m_Process.IsAlive(conn);
+}
+
+void CS2Context::Shutdown()
+{
+	g_Connected.store(false, std::memory_order_release);
 	g_Scatter    = nullptr;
 	g_ClientBase = 0;
+
 	delete m_Scatter;
+	m_Scatter   = nullptr;
+	m_VMMHandle = nullptr;
+
+	m_Timers.clear();
+	m_Local.reset();
+
+	// Per-process cached pointers — every one of these keys off a pointer
+	// in the dead process's address space and must be wiped before the
+	// next Initialize() runs against a new PID.
+	m_GlobalVarsPtr        = 0;
+	m_PlantedC4Ptr         = 0;
+	m_EntityChunk          = 0;
+	m_Engine2Base          = 0;
+	m_NetworkClientPtr     = 0;
+	m_GameRulesPtr         = 0;
+	m_LastRoundEndWinner   = 0;
+	m_CachedC4Wrapper      = 0;
+	m_CachedC4Weapon       = 0;
+	m_CachedOwnerHandle    = 0;
+	m_CachedCarrierChunk   = 0;
+	m_SuppressedC4Blow     = 0.0f;
+	m_MapGeneration        = 0;
+
+	m_Process.Reset();
+
+	// Snapshot the publicly-visible game state so the render thread stops
+	// drawing stale players/bomb/etc. while we wait for reattach.
+	{
+		std::lock_guard<std::mutex> lock(m_Mutex);
+		m_Game = CGame{};
+	}
 }
 
 bool CS2Context::Initialize(DMA_Connection* conn)

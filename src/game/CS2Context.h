@@ -9,6 +9,8 @@ public:
 
 	bool Initialize(DMA_Connection* conn) override;
 	bool Tick(DMA_Connection* conn, std::chrono::steady_clock::time_point now) override;
+	bool IsAlive(DMA_Connection* conn) override;
+	void Shutdown() override;
 
 	~CS2Context() override;
 

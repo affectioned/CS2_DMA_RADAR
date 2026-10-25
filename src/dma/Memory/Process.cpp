@@ -12,6 +12,7 @@ bool Process::GetProcessInfo(const std::string& processName,
 	Log::Info("Waiting for process {}..", processName);
 
 	m_PID = 0;
+	m_ProcessName = processName;
 
 	while (bRunning)
 	{
@@ -28,6 +29,24 @@ bool Process::GetProcessInfo(const std::string& processName,
 	}
 
 	return m_PID != 0;
+}
+
+bool Process::IsAlive(DMA_Connection* conn) const
+{
+	if (!m_PID || m_ProcessName.empty()) return false;
+	DWORD livePid = 0;
+	if (!VMMDLL_PidGetFromName(conn->GetHandle(), m_ProcessName.c_str(), &livePid))
+		return false;
+	return livePid == m_PID;
+}
+
+void Process::Reset()
+{
+	m_PID = 0;
+	m_Modules.clear();
+	m_ModuleSizes.clear();
+	// m_ProcessName intentionally preserved — IsAlive() keeps probing
+	// the same process name across the detach→reattach cycle.
 }
 
 uintptr_t Process::GetModuleBase(const std::string& name) const
