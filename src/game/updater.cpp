@@ -363,7 +363,7 @@ bool updater::resolveOffsets(DMA_Connection* conn, Process* proc)
     scanRIP(client_dll::dwEntityList,            "48 89 0D ? ? ? ? E9 ? ? ? ? CC",                                                  3, 7, "dwEntityList");
     scanRIP(client_dll::dwLocalPlayerController, "48 8B 05 ? ? ? ? 41 89 BE",                                                       3, 7, "dwLocalPlayerController");
     scanRIP(client_dll::dwGlobalVars,            "48 89 15 ? ? ? ? 48 89 42",                                                       3, 7, "dwGlobalVars");
-    scanRIP(client_dll::dwPlantedC4,             "48 8B 15 ? ? ? ? 41 FF C0 48 8D 4C 24 ? 44 89 05 ? ? ? ?",                        3, 7, "dwPlantedC4");
+    scanRIP(client_dll::dwPlantedC4,             "48 8B 1D ? ? ? ? 45 32 F6",                                                       3, 7, "dwPlantedC4");
     scanRIP(client_dll::dwWeaponC4,              "48 8B 15 ? ? ? ? 48 8B 5C 24 ? FF C0 89 05 ? ? ? ? 48 8B C6 48 89 34 EA 80 BE",   3, 7, "dwWeaponC4");
     // Pattern lifted from cs2-dumper. The RIP-relative load is the second
     // capture (4C 8B 05 ??) starting 9 bytes into the match — disp32 lives at

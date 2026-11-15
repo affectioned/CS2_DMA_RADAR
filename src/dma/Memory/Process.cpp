@@ -14,9 +14,11 @@ bool Process::GetProcessInfo(const std::string& processName,
 	m_PID = 0;
 	m_ProcessName = processName;
 
+	auto handle = conn->GetHandle();
+
 	while (bRunning)
 	{
-		VMMDLL_PidGetFromName(conn->GetHandle(), processName.c_str(), &m_PID);
+		VMMDLL_PidGetFromName(handle, processName.c_str(), &m_PID);
 
 		if (m_PID)
 		{
@@ -24,6 +26,11 @@ bool Process::GetProcessInfo(const std::string& processName,
 			PopulateModules(moduleNames, conn);
 			break;
 		}
+
+		// VMM runs with -norefresh so its process list is frozen on connect.
+		// Kick a medium-frequency refresh (full process re-enumeration) so a
+		// cs2.exe launched after the radar actually becomes visible.
+		VMMDLL_ConfigSet(handle, VMMDLL_OPT_REFRESH_FREQ_MEDIUM, 1);
 
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
@@ -88,7 +95,16 @@ bool Process::PopulateModules(const std::vector<std::string>& names, DMA_Connect
 		}
 
 		if (!allResolved())
+		{
+			// With -norefresh the per-process module list is cached once per
+			// enumeration pass; a cs2.exe that just launched may still be
+			// loading client.dll / engine2.dll. Force a module refresh for
+			// this specific PID so the next iteration sees newly-loaded DLLs.
+			VMMDLL_ConfigSet(handle,
+			                 VMMDLL_OPT_REFRESH_SPECIFIC_PROCESS | static_cast<uint64_t>(m_PID),
+			                 1);
 			std::this_thread::sleep_for(std::chrono::seconds(1));
+		}
 	}
 
 	for (const auto& name : names)

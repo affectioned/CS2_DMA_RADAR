@@ -201,11 +201,15 @@ void CS2Context::t_ModulePtrs()
 
 // ── t_MapName — 100 ms ────────────────────────────────────────────────────────
 // Follows globalVars+activeOff → mapPtr → map name string.
-// On each gen change, resets to the canonical offset 0x188 and forces an
-// immediate scan pass. If 0x188 fails, scans gv+[0x140..0x280] in 8-byte
-// steps every 5 s until a valid pointer to a printable map-prefixed string
-// is found, then sticks to that offset. Logs the found offset so it can be
-// hardcoded if it proves stable.
+// Default offset 0x188 is what the live 14197 client places the mapname char*
+// at once the player is in a loaded match (verified by REA + live scan). On
+// each gen change, resets to 0x188 and forces an immediate scan pass. If that
+// misses, scans gv+[0x100..0x400] in 8-byte steps every 2 s until a valid
+// pointer to a printable map-prefixed string is found, then sticks to that
+// offset. Scanning is gated on signOnState >= 6 (in-game) — between matches
+// and in menu the mapname field is genuinely empty, so polling there is
+// pointless noise. On every 3rd failed scan logs the first readable printable
+// string at each candidate offset so drift is diagnosable.
 
 void CS2Context::t_MapName()
 {
@@ -214,6 +218,7 @@ void CS2Context::t_MapName()
 	static uint32_t      lastGen   = UINT32_MAX;
 	static clk::time_point lastWait{};
 	static int           activeOff = 0x188;
+	static int           scanCount = 0;
 
 	if (m_MapGeneration != lastGen) {
 		Log::Info("[Map]: Generation {} - clearing map name", m_MapGeneration);
@@ -221,6 +226,7 @@ void CS2Context::t_MapName()
 		lastGen   = m_MapGeneration;
 		lastWait  = {};     // force immediate scan on first failed tick
 		activeOff = 0x188;
+		scanCount = 0;
 	}
 
 	uint64_t globalVars = m_GlobalVarsPtr;
@@ -228,30 +234,55 @@ void CS2Context::t_MapName()
 	if (!isValidPtr(globalVars))
 		return;
 
+	// 6 = SIGNONSTATE_FULL. Below that the player is in menu/loading/spawn and
+	// the mapname field in CGlobalVarsBase is empty or stale, so scanning only
+	// produces log spam. 0 explicitly means disconnected (NetworkClient null).
+	if (m_Local->signOnState < 6)
+		return;
+
+	// Map/mode prefixes CS2 ships with (official + common community gametypes).
+	static const char* kPrefixes[] = {
+		"de_", "cs_", "ar_", "gg_", "dm_", "dz_",
+		"aim_", "awp_", "surf_", "kz_", "bhop_", "jb_", "ze_",
+		"workshop/", "training1",
+	};
+	auto hasMapPrefix = [](const char* s) -> bool {
+		for (auto p : kPrefixes) if (strncmp(s, p, strlen(p)) == 0) return true;
+		return false;
+	};
+
 	// Try reading map name via a char* pointer at gv+off.
-	// Returns true if a valid, map-prefixed string was found (and updates mapName).
-	static const char* kPrefixes[] = { "de_", "cs_", "ar_", "gg_", "dm_", "dz_" };
-	auto tryPtr = [&](int off) -> bool {
+	// Returns 1 if a valid map-prefixed string was found (and updates mapName).
+	// Returns 0 on complete miss. Writes the discovered string to outBuf for
+	// diagnostic logging whether or not the prefix matched.
+	auto tryPtr = [&](int off, char* outBuf = nullptr, size_t outLen = 0) -> int {
 		uint64_t ptr = 0;
 		g_Scatter->Add(globalVars + off, &ptr);
 		g_Scatter->Execute();
 		g_Scatter->Clear();
-		if (!isValidPtr(ptr)) return false;
+		if (!isValidPtr(ptr)) return 0;
 
-		char buf[32] = {};
+		char buf[48] = {};
 		g_Scatter->AddRaw(ptr, sizeof(buf) - 1, buf);
 		g_Scatter->Execute();
 		g_Scatter->Clear();
 		buf[sizeof(buf) - 1] = '\0';
 
-		if (!buf[0]) return false;
-		for (size_t i = 0; buf[i]; i++) {
-			unsigned char c = (unsigned char)buf[i];
-			if (c < 0x20 || c > 0x7E) return false;
+		if (!buf[0]) return 0;
+		size_t printLen = 0;
+		for (; printLen < sizeof(buf) - 1 && buf[printLen]; printLen++) {
+			unsigned char c = (unsigned char)buf[printLen];
+			if (c < 0x20 || c > 0x7E) { buf[printLen] = '\0'; break; }
 		}
-		bool hasPrefix = false;
-		for (auto p : kPrefixes) if (strncmp(buf, p, 3) == 0) { hasPrefix = true; break; }
-		if (!hasPrefix) return false;
+		if (printLen < 3) return 0;
+
+		if (outBuf && outLen) {
+			size_t n = printLen < outLen - 1 ? printLen : outLen - 1;
+			memcpy(outBuf, buf, n);
+			outBuf[n] = '\0';
+		}
+
+		if (!hasMapPrefix(buf)) return 0;
 
 		if (strncmp(m_Local->mapName, buf, sizeof(m_Local->mapName)) != 0) {
 			if (off != 0x188)
@@ -260,17 +291,16 @@ void CS2Context::t_MapName()
 				Log::Info("[Map]: -> {}", buf);
 			memcpy(m_Local->mapName, buf, sizeof(m_Local->mapName));
 		}
-		return true;
+		return 1;
 	};
 
 	if (tryPtr(activeOff)) return;
 
 	auto now = clk::now();
-	if (now - lastWait < std::chrono::seconds(5)) return;
+	if (now - lastWait < std::chrono::seconds(2)) return;
 	lastWait = now;
+	scanCount++;
 
-	// Log what the failing offset holds, then scan the neighbourhood in case the
-	// offset shifted in a CS2 update. The scan runs every 5 s until the map loads.
 	uint64_t badPtr = 0;
 	g_Scatter->Add(globalVars + activeOff, &badPtr);
 	g_Scatter->Execute();
@@ -278,9 +308,13 @@ void CS2Context::t_MapName()
 	Log::Info("[Map]: gen {} gv+0x{:X}=0x{:X} - scanning",
 	          m_MapGeneration, activeOff, badPtr);
 
-	for (int off = 0x140; off <= 0x280; off += 8) {
+	bool verbose = (scanCount % 3) == 0;
+	for (int off = 0x100; off <= 0x400; off += 8) {
 		if (off == activeOff) continue;
-		if (tryPtr(off)) { activeOff = off; return; }
+		char dbg[48] = {};
+		if (tryPtr(off, dbg, sizeof(dbg))) { activeOff = off; return; }
+		if (verbose && dbg[0])
+			Log::Debug("[Map]: gv+0x{:X} -> \"{}\"", off, dbg);
 	}
 }
 

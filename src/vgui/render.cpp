@@ -47,7 +47,8 @@ void gui::gameLoop(const CGame& game) {
 		ImGui::Begin("##waiting", nullptr,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoBackground);
+			ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
 		const char* msg = "Waiting for map...";
 		ImVec2 textSize = ImGui::CalcTextSize(msg);
 		ImGui::SetCursorPos(ImVec2((display.x - textSize.x) * 0.5f, display.y * 0.5f - textSize.y * 0.5f));
@@ -74,7 +75,8 @@ void gui::gameLoop(const CGame& game) {
 		ImGui::Begin("##unsupported", nullptr,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 			ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoBackground);
+			ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs |
+			ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus);
 		const char* msg = "Unsupported map";
 		ImVec2 textSize = ImGui::CalcTextSize(msg);
 		ImVec2 nameSize = ImGui::CalcTextSize(mapName.c_str());
