@@ -27,6 +27,7 @@ Desktop.ini
 # ========================
 tools/AssetExtractor/vrf/
 tools/AssetExtractor/.venv/
+tools/AssetExtractor/exceptions.txt
 tools/tracy/
 *.pyc
 *.tracy

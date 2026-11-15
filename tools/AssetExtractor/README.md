@@ -8,10 +8,10 @@ Extracts CS2 radar images and weapon icons directly from the game's VPK files an
 Must be on PATH. `run.bat` handles the rest (creates a venv, installs Python dependencies).
 
 ### 2. VRF Source2Viewer CLI
-Used to decompile Source 2 compiled assets (`.vtex_c` textures and `.vsvg_c` SVGs) from the VPK.
+Drives every VPK read and asset decompile — radar `.vtex_c` → PNG, overview `.txt` raw extract, and weapon icon `.vsvg_c` → SVG. The CLI is well-maintained and picks up Valve's format changes quickly; keeping asset I/O here means we don't have to track those changes in Python.
 
 1. Go to https://github.com/ValveResourceFormat/ValveResourceFormat/releases
-2. Download **`cli-windows-x64.zip`** (self-contained, no .NET install required)
+2. Download **`cli-windows-x64.zip`** (self-contained, no .NET install required) — **version 21.1 or newer**. Older builds fail to decode current CS2 icons (KV3 datatype 0x1A).
 3. Extract the zip contents into:
    ```
    tools/AssetExtractor/vrf/
@@ -83,11 +83,12 @@ This means after a CS2 patch you can just re-run `run.bat` — no need to delete
 
 ## How it works
 
-1. Passes `game/csgo/pak01_dir.vpk` directly to VRF CLI, which reads and decompiles assets in one step.
-2. Extracts all `.vtex_c` radar textures from `panorama/images/overheadmaps/`; VRF outputs `.png` files.
-3. Normalises filenames to `<mapname>_radar.png` (e.g. `de_dust2_radar_psd.png` → `de_dust2_radar.png`). All map variants are included — arena maps, night versions, etc.
-4. Extracts overview bounds from `resource/overviews/*.txt` inside the VPK (via the `vpk` Python library — these files are not on the filesystem). Renames them to `<mapname>_radar.txt`. The C++ side parses `pos_x`/`pos_y`/`scale` from these at startup to position players correctly on the radar — no hardcoded bounds.
-5. Extracts `.vsvg_c` weapon icon SVGs from the equipment icons path and converts them to PNGs using `svglib`: renders white silhouettes onto black, then promotes luminance to alpha so icons are white-on-transparent.
+Every VPK read and Source 2 decompile goes through `Source2Viewer-CLI.exe`. Python is only used to drive the CLI, rasterize the SVGs it produces, and do incremental byte-compare writes.
+
+1. Passes `game/csgo/pak01_dir.vpk` to the CLI with `-e` / `-f` filters to extract one asset class at a time into a temp folder.
+2. **Radars** (`-e vtex_c -f panorama/images/overheadmaps/ -d`): CLI decompiles textures to PNG. Filenames are normalised to `<mapname>_radar.png` (`de_dust2_radar_psd.png` → `de_dust2_radar.png`); all variants are included (arena maps, night versions, etc.) and `_tga` variants win over `_psd` on name collision.
+3. **Overviews** (`-e txt -f resource/overviews/`, no `-d`): CLI raw-extracts the `.txt` bounds files. Renamed to `<mapname>_radar.txt`. The C++ side parses `pos_x`/`pos_y`/`scale` from these at startup to position players correctly on the radar — no hardcoded bounds.
+4. **Weapon icons** (`-e vsvg_c -f panorama/images/icons/equipment/ -d`): CLI decompiles the compiled SVGs to `.svg`. Python then rasterizes each with `svglib`/`reportlab`: renders the white silhouette onto black, then promotes luminance to alpha so icons are white-on-transparent. This SVG → PNG step is the one thing the CLI doesn't provide.
 
 ## Adding to the Visual Studio solution
 

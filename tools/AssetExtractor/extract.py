@@ -5,6 +5,11 @@ Extracts radar images and weapon icons from CS2 VPK files and outputs PNGs
 ready for use alongside CS2 Radar (place the output textures/ folder
 next to the .exe).
 
+All VPK I/O goes through Source2Viewer-CLI (tools/AssetExtractor/vrf/) — we
+drive the CLI and read its outputs, so decoding stays in sync with Valve's
+latest format changes. Python-side work is limited to driving the CLI,
+rasterizing CLI-produced SVGs to PNGs, and incremental byte-compare writes.
+
 Requires VRF Source2Viewer-CLI.exe in tools/AssetExtractor/vrf/ — see README.md.
 """
 
@@ -26,7 +31,6 @@ def _require(import_name, pip_name=None):
     except ImportError:
         sys.exit(f"Missing dependency: pip install {pip_name or import_name}")
 
-vpk      = _require("vpk")
 svglib   = _require("svglib.svglib", pip_name="svglib")
 renderPM = _require("reportlab.graphics.renderPM", pip_name="reportlab")
 PIL      = _require("PIL", pip_name="Pillow")
@@ -89,7 +93,7 @@ def _write_if_changed(path: Path, data: bytes) -> str:
     return "new"
 
 
-# ── VRF CLI ────────────────────────────────────────────────────────────────────
+# ── Source2Viewer-CLI driver ───────────────────────────────────────────────────
 
 def _find_cli() -> Path:
     vrf_dir = Path(__file__).parent / "vrf"
@@ -104,40 +108,39 @@ def _find_cli() -> Path:
     )
 
 
-def _vrf(cli: Path, vpk_path: Path, out_dir: Path,
-         extension: str, vpk_prefix: str, verbose: bool) -> None:
+def _s2v(cli: Path, vpk_path: Path, out_dir: Path, extension: str,
+         vpk_prefix: str, decompile: bool, verbose: bool) -> None:
     """
-    Run VRF CLI to decompile files from a VPK.
+    Run Source2Viewer-CLI to extract files from a VPK.
     -i  input VPK
-    -o  output directory
-    -d  decompile/export mode
-    --vpk_extensions  filter by extension inside the VPK
-    --vpk_filepath    filter by path prefix inside the VPK
+    -o  output directory (CLI mirrors VPK path structure under it)
+    -d  decompile — needed for vtex_c/vsvg_c/etc.; omit for raw files like .txt
+    -e  filter by extension inside the VPK
+    -f  filter by path prefix inside the VPK
     """
-    cmd = [str(cli), "-i", str(vpk_path), "-o", str(out_dir), "-d",
-           "--vpk_extensions", extension,
-           "--vpk_filepath",   vpk_prefix]
+    cmd = [str(cli), "-i", str(vpk_path), "-o", str(out_dir),
+           "-e", extension,
+           "-f", vpk_prefix,
+           "--quiet"]
+    if decompile:
+        cmd.append("-d")
     if verbose:
-        print(f"  [vrf]    {' '.join(cmd)}")
+        print(f"  [s2v]    {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.stdout.strip():
         print(result.stdout.rstrip())
     if result.stderr.strip():
         print(result.stderr.rstrip(), file=sys.stderr)
     if result.returncode != 0:
-        raise RuntimeError(f"VRF CLI exited {result.returncode}")
-    if verbose:
-        all_files = list(out_dir.rglob("*"))
-        print(f"  [vrf]    output dir contains {len(all_files)} file(s)")
-        for f in all_files[:20]:
-            print(f"           {f.relative_to(out_dir)}")
+        raise RuntimeError(f"Source2Viewer-CLI exited {result.returncode}")
 
 
 # ── SVG bytes → PNG bytes ──────────────────────────────────────────────────────
 #
 # CS2 weapon icons are white silhouettes on a transparent background.
-# svglib/renderPM renders onto an opaque background, so we render onto
-# black, then promote luminance to the alpha channel:
+# Source2Viewer-CLI decodes .vsvg_c to .svg but there's no CLI path to
+# rasterize to PNG, so svglib/reportlab do the final step. Render onto
+# black, then promote luminance to alpha:
 #   black pixel (background) → luminance 0   → fully transparent
 #   white pixel (icon)       → luminance 255 → fully opaque
 
@@ -165,27 +168,36 @@ def _svg_to_png(svg_bytes: bytes, height: int) -> bytes:
 
 # ── Overview txt extraction ────────────────────────────────────────────────────
 
-def extract_overview_txts(pak, out_dir: Path, verbose: bool) -> tuple[int, int, int]:
+_OVERVIEW_VPK_PREFIX = "resource/overviews/"
+
+def extract_overview_txts(cli: Path, vpk_path: Path, out_dir: Path,
+                          verbose: bool) -> tuple[int, int, int]:
     """Extract *_radar.txt bounds files from the VPK (resource/overviews/*.txt).
     Files are renamed <mapname>_radar.txt to match the PNG naming convention.
     Returns (new, updated, unchanged) counts."""
     out_dir.mkdir(parents=True, exist_ok=True)
     new_n = upd_n = unc_n = 0
-    for path in pak:
-        if not path.startswith("resource/overviews/") or not path.endswith(".txt"):
-            continue
-        stem     = Path(path).stem          # e.g. "de_dust2"
-        out_name = stem + "_radar.txt"      # e.g. "de_dust2_radar.txt"
-        try:
-            data = pak[path].read()
-            status = _write_if_changed(out_dir / out_name, data)
-            if   status == "new":     new_n += 1
-            elif status == "updated": upd_n += 1
-            else:                     unc_n += 1
-            if verbose:
-                print(f"  [overview] {status:9s} {Path(path).name}  ->  {out_name}")
-        except Exception as e:
-            print(f"  [overview] FAILED {path}: {e}", file=sys.stderr)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_out = Path(tmp) / "out"
+        tmp_out.mkdir()
+
+        # overviews are plain .txt — no decompile step.
+        _s2v(cli, vpk_path, tmp_out, "txt", _OVERVIEW_VPK_PREFIX,
+             decompile=False, verbose=verbose)
+
+        for txt in sorted(tmp_out.rglob("*.txt")):
+            stem     = txt.stem               # e.g. "de_dust2"
+            out_name = stem + "_radar.txt"    # e.g. "de_dust2_radar.txt"
+            try:
+                status = _write_if_changed(out_dir / out_name, txt.read_bytes())
+                if   status == "new":     new_n += 1
+                elif status == "updated": upd_n += 1
+                else:                     unc_n += 1
+                if verbose:
+                    print(f"  [overview] {status:9s} {txt.name}  ->  {out_name}")
+            except Exception as e:
+                print(f"  [overview] FAILED {txt.name}: {e}", file=sys.stderr)
     return new_n, upd_n, unc_n
 
 
@@ -193,7 +205,7 @@ def extract_overview_txts(pak, out_dir: Path, verbose: bool) -> tuple[int, int, 
 
 _RADAR_VPK_PREFIX = "panorama/images/overheadmaps/"
 
-def extract_radars(pak, cli: Path, vpk_path: Path, out_dir: Path, verbose: bool) -> tuple[int, int, int]:
+def extract_radars(cli: Path, vpk_path: Path, out_dir: Path, verbose: bool) -> tuple[int, int, int]:
     """Extract radar PNGs. Returns (new, updated, unchanged) counts."""
     out_dir.mkdir(parents=True, exist_ok=True)
     new_n = upd_n = unc_n = 0
@@ -202,16 +214,17 @@ def extract_radars(pak, cli: Path, vpk_path: Path, out_dir: Path, verbose: bool)
         tmp_out = Path(tmp) / "out"
         tmp_out.mkdir()
 
-        _vrf(cli, vpk_path, tmp_out, "vtex_c", _RADAR_VPK_PREFIX, verbose)
+        _s2v(cli, vpk_path, tmp_out, "vtex_c", _RADAR_VPK_PREFIX,
+             decompile=True, verbose=verbose)
 
-        # VRF preserves VPK path structure under tmp_out, so use rglob.
+        # CLI preserves VPK path structure under tmp_out, so use rglob.
         # Sort so that for maps with multiple variants (e.g. de_cache_radar_psd
         # AND de_cache_radar_tga), the alphabetically-later variant wins the
         # dedupe below — preserves the historical "_tga overwrites _psd"
         # behaviour without writing the same destination twice per run.
         candidates = sorted(list(tmp_out.rglob("*.png")) + list(tmp_out.rglob("*.tga")))
         if not candidates:
-            print("  [radar]  WARNING: VRF produced no image output for radar textures",
+            print("  [radar]  WARNING: CLI produced no image output for radar textures",
                   file=sys.stderr)
 
         # Dedupe by destination filename: later candidates overwrite earlier
@@ -249,7 +262,7 @@ _ALIASES: dict[str, str] = {
     "usp_silencer_off":  "usp_silencer",
 }
 
-def extract_icons(pak, cli: Path, vpk_path: Path, out_dir: Path, icon_height: int, verbose: bool) -> tuple[int, int, int]:
+def extract_icons(cli: Path, vpk_path: Path, out_dir: Path, icon_height: int, verbose: bool) -> tuple[int, int, int]:
     """Extract weapon icon PNGs. Returns (new, updated, unchanged) counts."""
     out_dir.mkdir(parents=True, exist_ok=True)
     extracted: dict[str, Path] = {}
@@ -265,7 +278,8 @@ def extract_icons(pak, cli: Path, vpk_path: Path, out_dir: Path, icon_height: in
         tmp_out = Path(tmp) / "out"
         tmp_out.mkdir()
 
-        _vrf(cli, vpk_path, tmp_out, "vsvg_c", _ICON_VPK_PREFIX, verbose)
+        _s2v(cli, vpk_path, tmp_out, "vsvg_c", _ICON_VPK_PREFIX,
+             decompile=True, verbose=verbose)
 
         # Dedupe by destination — multiple SVGs can map to the same out_stem via
         # _NAME_OVERRIDES (e.g. both p2000.svg and hkp2000.svg → hkp2000.png).
@@ -300,6 +314,21 @@ def extract_icons(pak, cli: Path, vpk_path: Path, out_dir: Path, icon_height: in
     return new_n, upd_n, unc_n
 
 
+# ── VPK listing (via CLI) ──────────────────────────────────────────────────────
+
+def list_vpk(cli: Path, vpk_path: Path, substr: str) -> None:
+    """Print VPK contents matching a substring (case-insensitive), via Source2Viewer-CLI."""
+    cmd = [str(cli), "-i", str(vpk_path), "--vpk_list"]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(result.stderr.rstrip(), file=sys.stderr)
+        sys.exit(result.returncode)
+    needle = substr.lower()
+    for line in result.stdout.splitlines():
+        if not needle or needle in line.lower():
+            print(line)
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main():
@@ -326,15 +355,12 @@ def main():
         sys.exit(f"VPK not found: {vpk_path}")
     print(f"VPK      : {vpk_path.name}")
 
+    cli = _find_cli()
+
     if args.list is not None:
-        pak  = vpk.open(str(vpk_path))
-        filt = args.list.lower()
-        for path in sorted(pak):
-            if not filt or filt in path.lower():
-                print(path)
+        list_vpk(cli, vpk_path, args.list)
         return
 
-    cli      = _find_cli()
     out_root = Path(args.out)
     print(f"Output   : {out_root.resolve()}\n")
 
@@ -344,13 +370,11 @@ def main():
         print(f"{label}: {total} total ({new_n} new, {upd_n} updated, {unc_n} unchanged)  ->  {dest}")
 
     if not args.no_radars:
-        pak = vpk.open(str(vpk_path))
-        _summary("Radars   ", extract_radars(pak, cli, vpk_path, out_root / "maps", args.verbose),  out_root / "maps")
-        _summary("Overviews", extract_overview_txts(pak, out_root / "maps", args.verbose),          out_root / "maps")
+        _summary("Radars   ", extract_radars(cli, vpk_path, out_root / "maps", args.verbose),            out_root / "maps")
+        _summary("Overviews", extract_overview_txts(cli, vpk_path, out_root / "maps", args.verbose),     out_root / "maps")
 
     if not args.no_icons:
-        pak = vpk.open(str(vpk_path))
-        _summary("Icons    ", extract_icons(pak, cli, vpk_path, out_root / "icons", args.icon_size, args.verbose), out_root / "icons")
+        _summary("Icons    ", extract_icons(cli, vpk_path, out_root / "icons", args.icon_size, args.verbose), out_root / "icons")
 
     print("\nDone.")
 
