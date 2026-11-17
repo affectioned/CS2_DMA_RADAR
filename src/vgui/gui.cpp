@@ -2,8 +2,18 @@
 #include "gui.h"
 #include "sdk.h"
 #include "updater.h"
+#include "share/ShareServer.h"
+#include "share/Tunnel.h"
 
 extern std::atomic<bool> bRunning;
+
+// Share lifecycle. Owned by gui.cpp because ControlPanel is the only place
+// settings::shareEnabled changes; OnFrame reconciles the live objects with
+// the settings state once per frame.
+namespace gui {
+    static std::unique_ptr<ShareServer> s_Share;
+    static std::unique_ptr<Tunnel>      s_Tunnel;
+}
 
 namespace gui {
 	ID3D11Device* g_pd3dDevice = nullptr;
@@ -36,6 +46,9 @@ namespace settings {
 	bool  showPlayerNamesEnemies = false, showPlayerNamesFriendlies = false;
 	bool  showTeamPanels         = true;
 	bool  rotateRadar            = true;
+	bool  shareEnabled           = false;
+	bool  sharePublic            = false;
+	int   sharePort              = 8787;
 	float iconScale              = 0.2f;
 	float aimLineLength          = 40.0f;
 	float dotRadius              = 8.0f;
@@ -89,6 +102,12 @@ void gui::InitImGui() {
 		{ "PlayerNamesFriendlies", &settings::showPlayerNamesFriendlies },
 		{ "TeamPanels",            &settings::showTeamPanels         },
 		{ "RotateRadar",           &settings::rotateRadar            },
+		{ "ShareEnabled",          &settings::shareEnabled           },
+		{ "SharePublic",           &settings::sharePublic            },
+	};
+	struct IntKey { const char* key; int* val; };
+	static const IntKey kIntKeys[] = {
+		{ "SharePort", &settings::sharePort },
 	};
 	static const FloatKey kFloatKeys[] = {
 		{ "IconScale",  &settings::iconScale     },
@@ -104,6 +123,12 @@ void gui::InitImGui() {
 			int i;
 			if (sscanf_s(line, fmt, &i) == 1) { *k.val = (i != 0); return; }
 		}
+		for (const auto& k : kIntKeys) {
+			char fmt[64];
+			snprintf(fmt, sizeof(fmt), "%s=%%d", k.key);
+			int i;
+			if (sscanf_s(line, fmt, &i) == 1) { *k.val = i; return; }
+		}
 		for (const auto& k : kFloatKeys) {
 			char fmt[64];
 			snprintf(fmt, sizeof(fmt), "%s=%%f", k.key);
@@ -114,6 +139,7 @@ void gui::InitImGui() {
 	h.WriteAllFn = [](ImGuiContext*, ImGuiSettingsHandler* h, ImGuiTextBuffer* buf) {
 		buf->appendf("[%s][Settings]\n", h->TypeName);
 		for (const auto& k : kBoolKeys)  buf->appendf("%s=%d\n",   k.key, *k.val);
+		for (const auto& k : kIntKeys)   buf->appendf("%s=%d\n",   k.key, *k.val);
 		for (const auto& k : kFloatKeys) buf->appendf("%s=%.3f\n", k.key, *k.val);
 		buf->append("\n");
 	};
@@ -170,8 +196,42 @@ void gui::InitImGui() {
 	Log::Info("[GUI]: ImGui {} initialized", IMGUI_VERSION);
 }
 
+// Reconcile the actual ShareServer/Tunnel instances with the user's current
+// settings. Run once per frame; cheap when nothing changed (just two
+// pointer checks). Owns both objects for the lifetime of the GUI.
+static void reconcileShare(CGame& game, std::mutex& gameMutex) {
+	using gui::s_Share;
+	using gui::s_Tunnel;
+
+	if (settings::shareEnabled) {
+		if (!s_Share) {
+			s_Share = std::make_unique<ShareServer>(game, gameMutex);
+			if (!s_Share->Start(static_cast<uint16_t>(settings::sharePort))) {
+				s_Share.reset();
+				settings::shareEnabled = false;      // revert the toggle on failure
+				settings::sharePublic  = false;
+			}
+		}
+		if (settings::sharePublic) {
+			if (!s_Tunnel) s_Tunnel = std::make_unique<Tunnel>();
+			if (s_Share && !s_Tunnel->IsRunning() && s_Tunnel->LastError().empty())
+				if (!s_Tunnel->Start(static_cast<uint16_t>(settings::sharePort)))
+					settings::sharePublic = false;
+		} else if (s_Tunnel) {
+			s_Tunnel->Stop();
+			s_Tunnel.reset();
+		}
+	} else {
+		if (s_Tunnel) { s_Tunnel->Stop(); s_Tunnel.reset(); }
+		if (s_Share)  { s_Share->Stop();  s_Share.reset();  }
+		settings::sharePublic = false;
+	}
+}
+
 void gui::OnFrame(CGame& game, std::mutex& gameMutex) {
 	ZoneScoped;
+	reconcileShare(game, gameMutex);
+
 	MSG msg;
 	while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
 		::TranslateMessage(&msg);
@@ -224,6 +284,8 @@ void gui::OnFrame(CGame& game, std::mutex& gameMutex) {
 }
 
 void gui::Cleanup() {
+	if (s_Tunnel) { s_Tunnel->Stop(); s_Tunnel.reset(); }
+	if (s_Share)  { s_Share->Stop();  s_Share.reset();  }
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
@@ -277,6 +339,53 @@ void gui::RenderControlPanel() {
 		bRunning.store(false, std::memory_order_release);
 	}
 	ImGui::PopStyleColor(3);
+
+	// Share
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+
+	if (ImGui::CollapsingHeader("Share")) {
+		ImGui::Spacing();
+		ImGui::Checkbox("Enable", &settings::shareEnabled);
+		if (settings::shareEnabled) {
+			ImGui::Spacing();
+			// OPSEC warning — the URLs below broadcast live DMA state.
+			// Painting this red every frame makes it hard to miss.
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+			ImGui::TextWrapped("URL exposes live game state. Anyone with the link sees your match.");
+			ImGui::PopStyleColor();
+			ImGui::Spacing();
+
+			if (s_Share) {
+				for (const auto& url : s_Share->Urls()) {
+					ImGui::TextUnformatted(url.c_str());
+					ImGui::SameLine();
+					ImGui::PushID(url.c_str());
+					if (ImGui::SmallButton("Copy")) ImGui::SetClipboardText(url.c_str());
+					ImGui::PopID();
+				}
+			}
+
+			ImGui::Spacing();
+			ImGui::Checkbox("Public tunnel (cloudflared)", &settings::sharePublic);
+			if (settings::sharePublic && s_Tunnel) {
+				std::string url = s_Tunnel->Url();
+				std::string err = s_Tunnel->LastError();
+				if (!err.empty()) {
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
+					ImGui::TextWrapped("%s", err.c_str());
+					ImGui::PopStyleColor();
+				} else if (url.empty()) {
+					ImGui::TextDisabled("waiting for cloudflared...");
+				} else {
+					ImGui::TextUnformatted(url.c_str());
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Copy")) ImGui::SetClipboardText(url.c_str());
+				}
+			}
+		}
+	}
 
 	// Settings
 	ImGui::Spacing();

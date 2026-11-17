@@ -1,8 +1,13 @@
 #pragma once
 
-// Windows
+// Windows. winsock2.h must be included BEFORE Windows.h — otherwise
+// Windows.h pulls in the ancient winsock.h (v1) via WinSock.h and the two
+// collide everywhere src/share needs the v2 API. We include it here (with
+// its lib pragma) so every TU gets the consistent order via the PCH.
 #define NOMINMAX
+#include <winsock2.h>
 #include <Windows.h>
+#pragma comment(lib, "ws2_32.lib")
 
 // DirectX
 #include <d3d11.h>

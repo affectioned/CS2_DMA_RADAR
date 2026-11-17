@@ -99,7 +99,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)src\share;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -119,7 +119,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)src\share;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -138,7 +138,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)src\share;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -160,7 +160,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)src\game;$(ProjectDir)src\game\client;$(ProjectDir)src\tier0;$(ProjectDir)src\vgui;$(ProjectDir)src\share;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\vmm;$(ProjectDir)vendor\dx;$(ProjectDir)vendor\tracy;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
@@ -241,6 +241,8 @@
     <ClCompile Include="src\vgui\render.cpp" />
     <ClCompile Include="src\vgui\dx11.cpp" />
     <ClCompile Include="src\vgui\resources.cpp" />
+    <ClCompile Include="src\share\ShareServer.cpp" />
+    <ClCompile Include="src\share\Tunnel.cpp" />
     <ClCompile Include="vendor\tracy\TracyClient.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -271,6 +273,9 @@
     <ClInclude Include="src\game\vec.h" />
     <ClInclude Include="src\game\updater.h" />
     <ClInclude Include="src\vgui\gui.h" />
+    <ClInclude Include="src\share\ShareServer.h" />
+    <ClInclude Include="src\share\Tunnel.h" />
+    <ClInclude Include="src\share\webroot.h" />
     <ClInclude Include="vendor\dx\WICTextureLoader.h" />
     <ClInclude Include="vendor\imgui\imconfig.h" />
     <ClInclude Include="vendor\imgui\imgui.h" />

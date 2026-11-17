@@ -114,6 +114,12 @@ namespace settings {
 
 	extern bool  showTeamPanels;
 	extern bool  rotateRadar;
+	// Share-radar web server. shareEnabled gates the local HTTP+WS listener;
+	// sharePublic additionally spawns cloudflared.exe to expose it as a
+	// random *.trycloudflare.com URL. Both persist via the ImGui ini.
+	extern bool  shareEnabled;
+	extern bool  sharePublic;
+	extern int   sharePort;
 	extern float iconScale;
 	extern float aimLineLength;
 	extern float dotRadius;
