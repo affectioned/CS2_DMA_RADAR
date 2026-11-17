@@ -503,6 +503,14 @@ std::string ShareServer::BuildFrameJson() {
         out += "]";
         if (b.isBeingDefused) out += ",\"defusing\":true";
     }
+    else if (b.isDropped) {
+        out += "\"state\":\"dropped\"";
+        out += ",\"pos\":[";
+        jsonNum(out, b.droppedPos.x); out.push_back(',');
+        jsonNum(out, b.droppedPos.y); out.push_back(',');
+        jsonNum(out, b.droppedPos.z);
+        out += "]";
+    }
     else out += "\"state\":\"none\"";
     out.push_back('}');
 

@@ -17,6 +17,14 @@ struct C_PlantedC4 {
 	bool isCarried   = false;
 	int  carrierSlot = -1;
 
+	// Dropped-on-ground state. Independent of isCarried / planted — when
+	// isDropped is true the C4 weapon entity is sitting in the world and
+	// droppedPos tracks its scene-node origin. Gated by
+	// CCSGameRules::m_bBombDropped (server-authoritative) so it won't
+	// flicker from the race on C_C4::m_hOwnerEntity during handoff.
+	bool     isDropped  = false;
+	Vector3  droppedPos = {};
+
 	float c4Blow = 0.0f; // m_flC4Blow: absolute game time of detonation; used as bomb identity
 
 	using Clock = std::chrono::steady_clock;

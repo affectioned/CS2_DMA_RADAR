@@ -326,6 +326,22 @@ void gui::renderBomb(const CGame& game, const RadarFrame& f) {
 		}
 	}
 
+	// Dropped C4 on the ground — grey dot so it reads differently from a
+	// planted bomb (bright yellow) and from a live player (team colors).
+	// Drawn even when no plant has happened so the sitting-on-the-floor
+	// bomb is visible to callers.
+	if (b.isDropped && !b.entity) {
+		float dx = b.droppedPos.x;
+		float dy = b.droppedPos.y;
+		worldToRadar(dx, dy, f);
+		ImVec2 dp = ImVec2(windowPos.x + dx, windowPos.y + dy);
+		ImDrawList* fdl = ImGui::GetForegroundDrawList();
+		fdl->AddCircleFilled(dp, settings::dotRadius + 1.25f, IM_COL32(0, 0, 0, 255));
+		fdl->AddCircleFilled(dp, settings::dotRadius,         IM_COL32(170, 170, 170, 255));
+		fdl->AddCircle(      dp, settings::dotRadius + 3.5f,  IM_COL32(255, 220,  0, 220), 0, 1.5f);
+		return;
+	}
+
 	if (!b.entity || !b.isTicking || b.hasDefused || b.hasExploded) return;
 
 	float bx = b.position.x;

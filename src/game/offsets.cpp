@@ -67,6 +67,8 @@ namespace client_dll {
 
 	namespace C_CSGameRules {
 		std::ptrdiff_t m_iRoundEndWinnerTeam = 0xF08;
+		std::ptrdiff_t m_bBombPlanted        = 0x8C7;
+		std::ptrdiff_t m_bBombDropped        = 0x9A8;
 	}
 
 	namespace C_PlantedC4 {

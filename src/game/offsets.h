@@ -69,6 +69,8 @@ namespace client_dll {
 
 	namespace C_CSGameRules {
 		extern std::ptrdiff_t m_iRoundEndWinnerTeam; // int32 — 0 mid-round, non-zero at round end
+		extern std::ptrdiff_t m_bBombPlanted;        // bool — authoritative plant flag
+		extern std::ptrdiff_t m_bBombDropped;        // bool — authoritative "C4 is on the ground"
 	}
 
 	namespace C_PlantedC4 {

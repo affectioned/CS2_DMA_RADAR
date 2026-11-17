@@ -174,6 +174,8 @@ const OffsetSpec kClassSpecs[] = {
     { "C_EconItemView",          "m_iItemDefinitionIndex",  &client_dll::C_EconItemView::m_iItemDefinitionIndex },
     { "C_CSGameRulesProxy",      "m_pGameRules",            &client_dll::C_CSGameRulesProxy::m_pGameRules },
     { "C_CSGameRules",           "m_iRoundEndWinnerTeam",   &client_dll::C_CSGameRules::m_iRoundEndWinnerTeam },
+    { "C_CSGameRules",           "m_bBombPlanted",          &client_dll::C_CSGameRules::m_bBombPlanted },
+    { "C_CSGameRules",           "m_bBombDropped",          &client_dll::C_CSGameRules::m_bBombDropped },
 };
 
 // Each offset has exactly one source: pattern-match (live client.dll resolution) OR

@@ -177,8 +177,19 @@ function render() {
     }
   }
 
-  // Bomb
+  // Bomb — dropped shows a grey dot with a yellow ring, planted shows a
+  // bright yellow dot + timer banner.
   const bomb = state.bomb;
+  if (bomb && bomb.state === 'dropped' && bomb.pos) {
+    const [bx, by] = worldToRadar(bomb.pos[0], bomb.pos[1], b, size);
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(bx, by, dotR + 1.5*devicePixelRatio, 0, 7); ctx.fill();
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath(); ctx.arc(bx, by, dotR, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,220,0,0.85)';
+    ctx.lineWidth = 1.5 * devicePixelRatio;
+    ctx.beginPath(); ctx.arc(bx, by, dotR + 3.5*devicePixelRatio, 0, 7); ctx.stroke();
+  }
   if (bomb && bomb.state === 'planted' && bomb.pos) {
     const [bx, by] = worldToRadar(bomb.pos[0], bomb.pos[1], b, size);
     ctx.fillStyle = '#000';

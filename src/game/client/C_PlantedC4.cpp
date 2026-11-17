@@ -129,37 +129,59 @@ void CS2Context::t_BombState()
 }
 
 // ── t_CarrierScan — 100 ms ───────────────────────────────────────────────────
-// Reads the global C4-weapon entity (dwWeaponC4 → wrapper → real C_C4) and
-// follows its m_hOwnerEntity CHandle through the entity-list chunk → slot to
-// find who is holding the bomb, then matches that pawn pointer against
-// players[]. Skipped once the bomb is planted; carrier state stays cleared
-// from then on (no planter tracking).
+// Three bomb states for an unplanted round: carried / dropped / not spawned.
+// The gating flags come from C_CSGameRules (m_bBombPlanted / m_bBombDropped) —
+// server-authoritative, network-replicated, stable. Without that gate the old
+// code raced the dwWeaponC4 → m_hOwnerEntity chain during carrier→drop
+// handoff, which is exactly the flicker the user hit: for a tick or two the
+// weapon still has a stale owner handle while the game's higher-level
+// "dropped" bit is already set, so the carrier halo flashed on and off.
+//
+// Flow:
+//   planted      → cleared here, t_BombState owns the planted visuals
+//   dropped      → read dwWeaponC4 → C_C4 scene node → world position
+//   carried      → resolve owner handle → pawn → match against players[]
+//   not spawned  → everything cleared
 
 void CS2Context::t_CarrierScan()
 {
 	ZoneScoped;
-	if (m_Local->bomb.entity) {
+
+	auto clearAll = [&] {
 		m_Local->bomb.isCarried   = false;
 		m_Local->bomb.carrierSlot = -1;
+		m_Local->bomb.isDropped   = false;
+	};
+
+	if (m_Local->bomb.entity) {
+		clearAll();
 		m_CachedC4Wrapper = 0;
 		return;
 	}
 	if (!m_Local->entityList) return;
 
-	auto clearCarrier = [&] {
-		m_Local->bomb.isCarried   = false;
-		m_Local->bomb.carrierSlot = -1;
-	};
+	// Pass 1 — read the two authoritative GameRules bits in parallel with
+	// dwWeaponC4 and (speculatively) the cached wrapper deref. One scatter
+	// round-trip either way.
+	bool     bombPlanted = false;
+	bool     bombDropped = false;
+	uint64_t c4Wrapper   = 0;
+	uint64_t c4Weapon    = 0;
 
-	// Merged pass 1+2: read dwWeaponC4 and speculatively deref cached wrapper
-	uint64_t c4Wrapper = 0, c4Weapon = 0;
+	if (m_GameRulesPtr) {
+		g_Scatter->Add(m_GameRulesPtr + client_dll::C_CSGameRules::m_bBombPlanted, &bombPlanted);
+		g_Scatter->Add(m_GameRulesPtr + client_dll::C_CSGameRules::m_bBombDropped, &bombDropped);
+	}
 	g_Scatter->Add(g_ClientBase + client_dll::dwWeaponC4, &c4Wrapper);
 	if (isValidPtr(m_CachedC4Wrapper))
 		g_Scatter->Add(m_CachedC4Wrapper, &c4Weapon);
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
-	if (!isValidPtr(c4Wrapper)) { clearCarrier(); m_CachedC4Wrapper = 0; return; }
+	// Planted ownership belongs to t_BombState — bail.
+	if (bombPlanted) { clearAll(); return; }
+
+	if (!isValidPtr(c4Wrapper)) { clearAll(); m_CachedC4Wrapper = 0; return; }
 	if (c4Wrapper != m_CachedC4Wrapper) {
 		m_CachedC4Wrapper = c4Wrapper;
 		c4Weapon = 0;
@@ -167,12 +189,34 @@ void CS2Context::t_CarrierScan()
 		g_Scatter->Execute();
 		g_Scatter->Clear();
 	}
-	m_CachedC4Wrapper = c4Wrapper;
-	if (!isValidPtr(c4Weapon)) { clearCarrier(); return; }
+	if (!isValidPtr(c4Weapon)) { clearAll(); return; }
 	m_CachedC4Weapon = c4Weapon;
 
-	// Merged pass 3+4+5: read ownerHandle and speculatively resolve the
-	// previously-cached handle's chunk + pawn in the same scatter call.
+	// Dropped — the bomb is in the world with no owner. Read the C_C4's
+	// scene-node origin for the map marker, no carrier.
+	if (bombDropped) {
+		uint64_t sceneNode = 0;
+		g_Scatter->Add(c4Weapon + client_dll::C_BaseEntity::m_pGameSceneNode, &sceneNode);
+		g_Scatter->Execute();
+		g_Scatter->Clear();
+
+		Vector3 pos{};
+		if (isValidPtr(sceneNode)) {
+			g_Scatter->Add(sceneNode + client_dll::CGameSceneNode::m_vecAbsOrigin, &pos);
+			g_Scatter->Execute();
+			g_Scatter->Clear();
+		}
+		m_Local->bomb.isDropped   = true;
+		m_Local->bomb.droppedPos  = pos;
+		m_Local->bomb.isCarried   = false;
+		m_Local->bomb.carrierSlot = -1;
+		return;
+	}
+
+	m_Local->bomb.isDropped = false;
+
+	// Carried — read owner handle + speculatively resolve the previously
+	// cached handle's chunk + pawn in one scatter call.
 	uint32_t ownerHandle = 0;
 	uint64_t chunkPtr = 0, ownerPawn = 0;
 	g_Scatter->Add(c4Weapon + client_dll::C_BaseEntity::m_hOwnerEntity, &ownerHandle);
@@ -185,7 +229,12 @@ void CS2Context::t_CarrierScan()
 	g_Scatter->Execute();
 	g_Scatter->Clear();
 
-	if (!ownerHandle || ownerHandle == 0xFFFFFFFF) { clearCarrier(); m_CachedOwnerHandle = 0; return; }
+	if (!ownerHandle || ownerHandle == 0xFFFFFFFF) {
+		m_Local->bomb.isCarried   = false;
+		m_Local->bomb.carrierSlot = -1;
+		m_CachedOwnerHandle       = 0;
+		return;
+	}
 
 	if (ownerHandle != m_CachedOwnerHandle || !specChunk) {
 		m_CachedOwnerHandle = ownerHandle;
@@ -193,7 +242,11 @@ void CS2Context::t_CarrierScan()
 		g_Scatter->Add(m_Local->entityList + 0x8 * ((ownerHandle & 0x7FFF) >> 9) + 16, &chunkPtr);
 		g_Scatter->Execute();
 		g_Scatter->Clear();
-		if (!isValidPtr(chunkPtr)) { clearCarrier(); return; }
+		if (!isValidPtr(chunkPtr)) {
+			m_Local->bomb.isCarried   = false;
+			m_Local->bomb.carrierSlot = -1;
+			return;
+		}
 		m_CachedCarrierChunk = chunkPtr;
 
 		ownerPawn = 0;
@@ -205,7 +258,11 @@ void CS2Context::t_CarrierScan()
 		m_CachedCarrierChunk = chunkPtr;
 	}
 
-	if (!isValidPtr(ownerPawn)) { clearCarrier(); return; }
+	if (!isValidPtr(ownerPawn)) {
+		m_Local->bomb.isCarried   = false;
+		m_Local->bomb.carrierSlot = -1;
+		return;
+	}
 
 	for (size_t i = 0; i < MAX_ENTITIES; i++) {
 		if (m_Local->players[i].pawnBase == ownerPawn) {
@@ -214,5 +271,6 @@ void CS2Context::t_CarrierScan()
 			return;
 		}
 	}
-	clearCarrier();
+	m_Local->bomb.isCarried   = false;
+	m_Local->bomb.carrierSlot = -1;
 }
