@@ -185,6 +185,12 @@ const OffsetSpec kModuleSpecs[] = {
     { "engine2_dll", "dwBuildNumber",                   &engine2_dll::dwBuildNumber },
     { "engine2_dll", "dwNetworkGameClient",             &engine2_dll::dwNetworkGameClient },
     { "engine2_dll", "dwNetworkGameClient_signOnState", &engine2_dll::dwNetworkGameClient_signOnState },
+    // dwPlantedC4 used to go through the pattern scanner, but the sig breaks
+    // noticeably often — build 14200 moved it even though the surrounding
+    // bytes still look similar. Cs2-dumper tracks it reliably, so fetch
+    // from there and let the pattern scanner fall back only if the fetch
+    // fails (ResolveOffset preserves whatever's already in the slot).
+    { "client_dll",  "dwPlantedC4",                     &client_dll::dwPlantedC4 },
 };
 
 int applyOffsets(const OffsetSpec* specs, int specCount, const NamespaceMap& parsed,
@@ -365,7 +371,6 @@ bool updater::resolveOffsets(DMA_Connection* conn, Process* proc)
     scanRIP(client_dll::dwEntityList,            "48 89 0D ? ? ? ? E9 ? ? ? ? CC",                                                  3, 7, "dwEntityList");
     scanRIP(client_dll::dwLocalPlayerController, "48 8B 05 ? ? ? ? 41 89 BE",                                                       3, 7, "dwLocalPlayerController");
     scanRIP(client_dll::dwGlobalVars,            "48 89 15 ? ? ? ? 48 89 42",                                                       3, 7, "dwGlobalVars");
-    scanRIP(client_dll::dwPlantedC4,             "48 8B 1D ? ? ? ? 45 32 F6",                                                       3, 7, "dwPlantedC4");
     scanRIP(client_dll::dwWeaponC4,              "48 8B 15 ? ? ? ? 48 8B 5C 24 ? FF C0 89 05 ? ? ? ? 48 8B C6 48 89 34 EA 80 BE",   3, 7, "dwWeaponC4");
     // Pattern lifted from cs2-dumper. The RIP-relative load is the second
     // capture (4C 8B 05 ??) starting 9 bytes into the match — disp32 lives at

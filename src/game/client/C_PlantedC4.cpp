@@ -147,14 +147,35 @@ void CS2Context::t_CarrierScan()
 {
 	ZoneScoped;
 
-	auto clearAll = [&] {
+	constexpr uint32_t kCarrierGraceTicks = 3;
+
+	// Sticky "lost" transitions — a single bad tick on the owner-handle chain
+	// must not flash the halo off; only clear state once the chain has been
+	// quiet for kCarrierGraceTicks ticks in a row. Positive scans reset the
+	// corresponding counter.
+	auto loseCarrier = [&] {
+		if (!m_Local->bomb.isCarried) return;
+		if (++m_CarrierLostTicks < kCarrierGraceTicks) return;
+		m_Local->bomb.isCarried   = false;
+		m_Local->bomb.carrierSlot = -1;
+	};
+	auto loseDropped = [&] {
+		if (!m_Local->bomb.isDropped) return;
+		if (++m_DroppedLostTicks < kCarrierGraceTicks) return;
+		m_Local->bomb.isDropped = false;
+	};
+	auto clearAllNow = [&] {
 		m_Local->bomb.isCarried   = false;
 		m_Local->bomb.carrierSlot = -1;
 		m_Local->bomb.isDropped   = false;
+		m_CarrierLostTicks        = 0;
+		m_DroppedLostTicks        = 0;
 	};
 
 	if (m_Local->bomb.entity) {
-		clearAll();
+		// Planted — t_BombState owns the visuals, and both carrier/dropped are
+		// definitively off. No grace needed here, the plant is a hard edge.
+		clearAllNow();
 		m_CachedC4Wrapper = 0;
 		return;
 	}
@@ -179,9 +200,13 @@ void CS2Context::t_CarrierScan()
 	g_Scatter->Clear();
 
 	// Planted ownership belongs to t_BombState — bail.
-	if (bombPlanted) { clearAll(); return; }
+	if (bombPlanted) { clearAllNow(); return; }
 
-	if (!isValidPtr(c4Wrapper)) { clearAll(); m_CachedC4Wrapper = 0; return; }
+	if (!isValidPtr(c4Wrapper)) {
+		loseCarrier(); loseDropped();
+		m_CachedC4Wrapper = 0;
+		return;
+	}
 	if (c4Wrapper != m_CachedC4Wrapper) {
 		m_CachedC4Wrapper = c4Wrapper;
 		c4Weapon = 0;
@@ -189,7 +214,7 @@ void CS2Context::t_CarrierScan()
 		g_Scatter->Execute();
 		g_Scatter->Clear();
 	}
-	if (!isValidPtr(c4Weapon)) { clearAll(); return; }
+	if (!isValidPtr(c4Weapon)) { loseCarrier(); loseDropped(); return; }
 	m_CachedC4Weapon = c4Weapon;
 
 	// Dropped — the bomb is in the world with no owner. Read the C_C4's
@@ -208,12 +233,12 @@ void CS2Context::t_CarrierScan()
 		}
 		m_Local->bomb.isDropped   = true;
 		m_Local->bomb.droppedPos  = pos;
-		m_Local->bomb.isCarried   = false;
-		m_Local->bomb.carrierSlot = -1;
+		m_DroppedLostTicks        = 0;
+		loseCarrier();               // dropped == definitively not carried, but with grace
 		return;
 	}
 
-	m_Local->bomb.isDropped = false;
+	loseDropped();
 
 	// Carried — read owner handle + speculatively resolve the previously
 	// cached handle's chunk + pawn in one scatter call.
@@ -230,9 +255,8 @@ void CS2Context::t_CarrierScan()
 	g_Scatter->Clear();
 
 	if (!ownerHandle || ownerHandle == 0xFFFFFFFF) {
-		m_Local->bomb.isCarried   = false;
-		m_Local->bomb.carrierSlot = -1;
-		m_CachedOwnerHandle       = 0;
+		loseCarrier();
+		m_CachedOwnerHandle = 0;
 		return;
 	}
 
@@ -242,11 +266,7 @@ void CS2Context::t_CarrierScan()
 		g_Scatter->Add(m_Local->entityList + 0x8 * ((ownerHandle & 0x7FFF) >> 9) + 16, &chunkPtr);
 		g_Scatter->Execute();
 		g_Scatter->Clear();
-		if (!isValidPtr(chunkPtr)) {
-			m_Local->bomb.isCarried   = false;
-			m_Local->bomb.carrierSlot = -1;
-			return;
-		}
+		if (!isValidPtr(chunkPtr)) { loseCarrier(); return; }
 		m_CachedCarrierChunk = chunkPtr;
 
 		ownerPawn = 0;
@@ -258,19 +278,15 @@ void CS2Context::t_CarrierScan()
 		m_CachedCarrierChunk = chunkPtr;
 	}
 
-	if (!isValidPtr(ownerPawn)) {
-		m_Local->bomb.isCarried   = false;
-		m_Local->bomb.carrierSlot = -1;
-		return;
-	}
+	if (!isValidPtr(ownerPawn)) { loseCarrier(); return; }
 
 	for (size_t i = 0; i < MAX_ENTITIES; i++) {
 		if (m_Local->players[i].pawnBase == ownerPawn) {
 			m_Local->bomb.isCarried   = true;
 			m_Local->bomb.carrierSlot = (int)i;
+			m_CarrierLostTicks        = 0;
 			return;
 		}
 	}
-	m_Local->bomb.isCarried   = false;
-	m_Local->bomb.carrierSlot = -1;
+	loseCarrier();
 }

@@ -52,6 +52,8 @@ void CS2Context::Shutdown()
 	m_CachedC4Weapon       = 0;
 	m_CachedOwnerHandle    = 0;
 	m_CachedCarrierChunk   = 0;
+	m_CarrierLostTicks     = 0;
+	m_DroppedLostTicks     = 0;
 	m_SuppressedC4Blow     = 0.0f;
 	m_MapGeneration        = 0;
 

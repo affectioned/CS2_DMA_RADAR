@@ -38,6 +38,13 @@ private:
 	uint64_t m_CachedC4Weapon     = 0;
 	uint32_t m_CachedOwnerHandle  = 0;
 	uint64_t m_CachedCarrierChunk = 0;
+	// Grace counters so a single bad tick on the owner-handle chain doesn't
+	// flash the carrier halo off and back on. t_CarrierScan increments each
+	// counter whenever the current scan fails to produce a positive result
+	// for that state; the halo clears only after kCarrierGraceTicks (3)
+	// consecutive bad ticks, i.e. ~300 ms. Reset to 0 on any positive scan.
+	uint32_t m_CarrierLostTicks   = 0;
+	uint32_t m_DroppedLostTicks   = 0;
 	// Set on respawn to the previous bomb's m_flC4Blow value. t_BombState suppresses
 	// any entity whose m_flC4Blow matches until a new (different) plant is detected.
 	float    m_SuppressedC4Blow = 0.0f;
