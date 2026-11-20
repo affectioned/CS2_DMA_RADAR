@@ -20,8 +20,12 @@ namespace
 	constexpr const wchar_t* kMemProcFSApiPath = L"/repos/ufrisk/MemProcFS/releases/latest";
 	constexpr const char*    kAssetNeedle      = "win_x64-latest.zip";
 
-	constexpr const wchar_t* kRepoArchiveHost = L"github.com";
-	constexpr const wchar_t* kRepoArchivePath = L"/affectioned/CS2_DMA_RADAR/archive/refs/heads/main.zip";
+	constexpr const wchar_t* kRepoArchiveHost    = L"github.com";
+	constexpr const wchar_t* kRepoArchivePath    = L"/affectioned/CS2_DMA_RADAR/archive/refs/heads/main.zip";
+	// Latest main-branch commit SHA — one small JSON response, cheap to hit on
+	// every launch to decide whether the on-disk textures/ copy is stale.
+	constexpr const wchar_t* kRepoCommitsApiPath = L"/repos/affectioned/CS2_DMA_RADAR/commits/main";
+	constexpr const wchar_t* kTexturesShaFile    = L".commit";
 
 	constexpr const wchar_t* kTracyApiPath   = L"/repos/wolfpld/tracy/releases/tags/v0.11.1";
 	constexpr const char*    kTracyNeedle    = "windows-";
@@ -188,6 +192,40 @@ namespace
 		return fs::is_empty(maps, ec) || fs::is_empty(icons, ec);
 	}
 
+	// Extract the first `"sha":"<40-hex>"` from a commits API response.
+	// The outer payload has that as its first field so a linear find is fine
+	// and costs nothing vs. pulling in a JSON parser.
+	std::string ParseFirstSha(std::string_view json)
+	{
+		constexpr std::string_view key = "\"sha\":\"";
+		const size_t pos = json.find(key);
+		if (pos == std::string_view::npos) return {};
+		const size_t start = pos + key.size();
+		const size_t end   = json.find('"', start);
+		if (end == std::string_view::npos) return {};
+		return std::string(json.substr(start, end - start));
+	}
+
+	std::string ReadShaFile(const fs::path& p)
+	{
+		std::ifstream f(p);
+		if (!f) return {};
+		std::string s;
+		std::getline(f, s);
+		// Trim; avoids a single stray newline causing a false mismatch.
+		while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' '))
+			s.pop_back();
+		return s;
+	}
+
+	void WriteShaFile(const fs::path& p, std::string_view sha)
+	{
+		std::error_code ec;
+		fs::create_directories(p.parent_path(), ec);
+		std::ofstream f(p, std::ios::trunc);
+		if (f) f << sha << '\n';
+	}
+
 	fs::path FindTexturesDir(const fs::path& root)
 	{
 		std::error_code ec;
@@ -304,13 +342,11 @@ namespace Bootstrap
 		Log::Info("[Bootstrap] MemProcFS runtime DLLs ready");
 		return true;
 	}
-	bool EnsureTextures()
+	// Download the main-branch archive and copy its textures/maps and
+	// textures/icons over the live ones. Caller decides *when* to run this;
+	// EnsureTextures is the policy, this is the mechanism.
+	bool DownloadAndInstallTextures(const fs::path& exeDir, std::string_view expectedSha)
 	{
-		const fs::path exeDir = ExeDir();
-		if (!TexturesMissing(exeDir)) return true;
-
-		Log::Info("[Bootstrap] Textures missing; downloading from repository...");
-
 		std::vector<BYTE> zipBytes;
 		if (!HttpsGet(kRepoArchiveHost, kRepoArchivePath, zipBytes))
 		{
@@ -369,7 +405,53 @@ namespace Bootstrap
 			return false;
 		}
 
-		Log::Info("[Bootstrap] Textures ready");
+		WriteShaFile(dstTextures / kTexturesShaFile, expectedSha);
+		return true;
+	}
+
+	bool EnsureTextures()
+	{
+		const fs::path exeDir       = ExeDir();
+		const fs::path shaFile      = exeDir / L"textures" / kTexturesShaFile;
+		const std::string localSha  = ReadShaFile(shaFile);
+		const bool        missing   = TexturesMissing(exeDir);
+
+		// One commits-API call per launch (unauthenticated, 60/hr). If GitHub
+		// is unreachable we fall through to whatever is already on disk —
+		// offline is a supported mode, and stale textures beat no textures.
+		std::vector<BYTE> apiBody;
+		std::string       remoteSha;
+		if (HttpsGet(kGithubApiHost, kRepoCommitsApiPath, apiBody))
+			remoteSha = ParseFirstSha(
+				std::string_view(reinterpret_cast<const char*>(apiBody.data()), apiBody.size()));
+
+		if (!missing && !remoteSha.empty() && remoteSha == localSha)
+			return true;
+
+		if (missing)
+			Log::Info("[Bootstrap] Textures missing; downloading from repository...");
+		else if (!remoteSha.empty())
+			Log::Info("[Bootstrap] Textures update available ({} -> {}); refreshing...",
+				localSha.empty() ? "<none>" : localSha.substr(0, 7),
+				remoteSha.substr(0, 7));
+		else
+		{
+			// Offline on first launch — nothing to install and nothing cached.
+			if (missing) {
+				Log::Warn("[Bootstrap] Textures missing and GitHub unreachable");
+				return false;
+			}
+			Log::Info("[Bootstrap] GitHub unreachable; using cached textures");
+			return true;
+		}
+
+		if (!DownloadAndInstallTextures(exeDir, remoteSha))
+			return !missing; // keep whatever was already on disk if a refresh fails
+
+		if (remoteSha.empty())
+			Log::Info("[Bootstrap] Textures ready");
+		else
+			Log::Info("[Bootstrap] Textures ready @ {}", remoteSha.substr(0, 7));
 		return true;
 	}
 	bool EnsureTracyTools()
