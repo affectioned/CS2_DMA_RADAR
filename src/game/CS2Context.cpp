@@ -339,7 +339,31 @@ void CS2Context::t_NetworkState()
 	g_Scatter->Clear();
 
 	if (newState != m_Local->signOnState) {
-		Log::Info("[Network]: signOnState {} -> {}", m_Local->signOnState, newState);
+		const uint8_t prev = m_Local->signOnState;
+		Log::Info("[Network]: signOnState {} -> {}", prev, newState);
 		m_Local->signOnState = newState;
+
+		// Match handoff — when CS2 drops the server connection (common after a
+		// prolonged alt-tab, map change, or server timeout), the per-match
+		// pointers we've cached can no longer be trusted. Wipe them so the
+		// next in-game transition forces a clean re-resolve instead of
+		// rendering ghosts from the previous match.
+		if (prev >= 6 && newState < 6) {
+			Log::Info("[Network]: dropped from in-game, clearing match state");
+			memset(m_Local->mapName, 0, sizeof(m_Local->mapName));
+			m_Local->bomb         = {};
+			m_PlantedC4Ptr        = 0;
+			m_GameRulesPtr        = 0;
+			m_CachedC4Wrapper     = 0;
+			m_CachedC4Weapon      = 0;
+			m_CachedOwnerHandle   = 0;
+			m_CachedCarrierChunk  = 0;
+			m_CarrierLostTicks    = 0;
+			m_DroppedLostTicks    = 0;
+			m_SuppressedC4Blow    = 0.0f;
+			// Bump map gen so t_MapName drops its sticky activeOff and the next
+			// in-game tick re-scans from the default offset.
+			m_MapGeneration++;
+		}
 	}
 }

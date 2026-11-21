@@ -147,7 +147,7 @@ void CS2Context::t_CarrierScan()
 {
 	ZoneScoped;
 
-	constexpr uint32_t kCarrierGraceTicks = 3;
+	constexpr uint32_t kCarrierGraceTicks = 10;
 
 	// Sticky "lost" transitions — a single bad tick on the owner-handle chain
 	// must not flash the halo off; only clear state once the chain has been

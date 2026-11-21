@@ -15,6 +15,7 @@ bool Process::GetProcessInfo(const std::string& processName,
 	m_ProcessName = processName;
 
 	auto handle = conn->GetHandle();
+	uint32_t iter = 0;
 
 	while (bRunning)
 	{
@@ -27,11 +28,21 @@ bool Process::GetProcessInfo(const std::string& processName,
 			break;
 		}
 
-		// VMM runs with -norefresh so its process list is frozen on connect.
-		// Kick a medium-frequency refresh (full process re-enumeration) so a
-		// cs2.exe launched after the radar actually becomes visible.
+		// VMM runs with -norefresh so its caches are frozen on connect and a
+		// cs2.exe launched after the radar started is invisible until we kick
+		// a refresh. REFRESH_FREQ_MEDIUM alone proved unreliable on some VMM
+		// builds (82+ s of silence in the field), so we escalate: medium each
+		// iteration, plus a full REFRESH_ALL every 5 s as a nuclear fallback.
 		VMMDLL_ConfigSet(handle, VMMDLL_OPT_REFRESH_FREQ_MEDIUM, 1);
+		if ((iter % 5) == 4)
+			VMMDLL_ConfigSet(handle, VMMDLL_OPT_REFRESH_ALL, 1);
 
+		// Heartbeat every 10 s so the log makes it obvious we're alive and
+		// still polling, instead of looking stuck like before.
+		if (iter && (iter % 10) == 0)
+			Log::Info("Still waiting for {}.. ({} s)", processName, iter);
+
+		++iter;
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}
 
