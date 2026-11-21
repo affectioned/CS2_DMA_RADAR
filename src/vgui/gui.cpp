@@ -169,27 +169,67 @@ void gui::InitImGui() {
 	}
 
 	ImGuiStyle& style = ImGui::GetStyle();
-	style.WindowRounding    = 6.0f;
-	style.FrameRounding     = 4.0f;
-	style.GrabRounding      = 4.0f;
-	style.WindowBorderSize  = 0.0f;
+	style.WindowRounding    = 10.0f;
+	style.ChildRounding     = 8.0f;
+	style.FrameRounding     = 6.0f;
+	style.PopupRounding     = 8.0f;
+	style.GrabRounding      = 6.0f;
+	style.ScrollbarRounding = 6.0f;
+	style.TabRounding       = 6.0f;
+	style.WindowBorderSize  = 1.0f;
 	style.FrameBorderSize   = 0.0f;
-	style.ItemSpacing       = ImVec2(8.0f, 6.0f);
-	style.WindowPadding     = ImVec2(12.0f, 10.0f);
-	style.FramePadding      = ImVec2(8.0f, 4.0f);
+	style.ItemSpacing       = ImVec2(10.0f, 8.0f);
+	style.ItemInnerSpacing  = ImVec2(8.0f, 6.0f);
+	style.WindowPadding     = ImVec2(16.0f, 14.0f);
+	style.FramePadding      = ImVec2(10.0f, 5.0f);
+	style.IndentSpacing     = 18.0f;
+	style.SeparatorTextBorderSize = 1.0f;
 
+	// Palette: Linear/Vercel-class 2026 dark — near-black with cool blue tint,
+	// one vibrant electric-blue accent (#7C9DFF). Hover tiers rise in 2% steps,
+	// matching how modern dashboards treat state without any color shift.
 	ImVec4* c = style.Colors;
-	c[ImGuiCol_WindowBg]          = ImVec4(0.08f, 0.08f, 0.10f, 0.92f);
-	c[ImGuiCol_Text]              = ImVec4(0.90f, 0.90f, 0.95f, 1.00f);
-	c[ImGuiCol_TextDisabled]      = ImVec4(0.50f, 0.50f, 0.58f, 1.00f);
-	c[ImGuiCol_Separator]         = ImVec4(0.22f, 0.22f, 0.28f, 1.00f);
-	c[ImGuiCol_Button]            = ImVec4(0.18f, 0.18f, 0.22f, 1.00f);
-	c[ImGuiCol_ButtonHovered]     = ImVec4(0.28f, 0.28f, 0.36f, 1.00f);
-	c[ImGuiCol_ButtonActive]      = ImVec4(0.20f, 0.20f, 0.28f, 1.00f);
-	c[ImGuiCol_FrameBg]           = ImVec4(0.12f, 0.12f, 0.16f, 1.00f);
-	c[ImGuiCol_FrameBgHovered]    = ImVec4(0.20f, 0.20f, 0.26f, 1.00f);
-	c[ImGuiCol_Header]            = ImVec4(0.20f, 0.20f, 0.26f, 1.00f);
-	c[ImGuiCol_HeaderHovered]     = ImVec4(0.28f, 0.28f, 0.36f, 1.00f);
+	const ImVec4 bg      = ImVec4(0.039f, 0.047f, 0.063f, 0.96f); // #0A0C10
+	const ImVec4 bgCard  = ImVec4(0.067f, 0.078f, 0.102f, 1.00f); // #11141A
+	const ImVec4 bgHi    = ImVec4(0.098f, 0.118f, 0.153f, 1.00f); // #191E27
+	const ImVec4 bgHover = ImVec4(0.125f, 0.145f, 0.188f, 1.00f);
+	const ImVec4 txt     = ImVec4(0.902f, 0.914f, 0.941f, 1.00f); // #E6E9F0
+	const ImVec4 txtDim  = ImVec4(0.420f, 0.463f, 0.518f, 1.00f); // #6B7684
+	const ImVec4 border  = ImVec4(1.000f, 1.000f, 1.000f, 0.06f);
+	const ImVec4 line    = ImVec4(1.000f, 1.000f, 1.000f, 0.07f);
+	const ImVec4 accent  = ImVec4(0.486f, 0.616f, 1.000f, 1.00f); // #7C9DFF
+
+	c[ImGuiCol_WindowBg]           = bg;
+	c[ImGuiCol_ChildBg]            = ImVec4(0,0,0,0);
+	c[ImGuiCol_PopupBg]            = ImVec4(0.039f, 0.047f, 0.063f, 0.98f);
+	c[ImGuiCol_Border]             = border;
+	c[ImGuiCol_Text]               = txt;
+	c[ImGuiCol_TextDisabled]       = txtDim;
+	c[ImGuiCol_Separator]          = line;
+	c[ImGuiCol_SeparatorHovered]   = ImVec4(accent.x, accent.y, accent.z, 0.40f);
+	c[ImGuiCol_SeparatorActive]    = ImVec4(accent.x, accent.y, accent.z, 0.70f);
+	c[ImGuiCol_Button]             = bgCard;
+	c[ImGuiCol_ButtonHovered]      = bgHover;
+	c[ImGuiCol_ButtonActive]       = bgHi;
+	c[ImGuiCol_FrameBg]            = ImVec4(0.055f, 0.067f, 0.090f, 1.00f);
+	c[ImGuiCol_FrameBgHovered]     = bgHover;
+	c[ImGuiCol_FrameBgActive]      = bgHi;
+	c[ImGuiCol_Header]             = ImVec4(accent.x, accent.y, accent.z, 0.08f);
+	c[ImGuiCol_HeaderHovered]      = ImVec4(accent.x, accent.y, accent.z, 0.14f);
+	c[ImGuiCol_HeaderActive]       = ImVec4(accent.x, accent.y, accent.z, 0.22f);
+	c[ImGuiCol_CheckMark]          = accent;
+	c[ImGuiCol_SliderGrab]         = ImVec4(accent.x, accent.y, accent.z, 0.85f);
+	c[ImGuiCol_SliderGrabActive]   = accent;
+	c[ImGuiCol_ScrollbarBg]        = ImVec4(0,0,0,0);
+	c[ImGuiCol_ScrollbarGrab]      = ImVec4(1,1,1, 0.10f);
+	c[ImGuiCol_ScrollbarGrabHovered] = ImVec4(1,1,1, 0.18f);
+	c[ImGuiCol_ScrollbarGrabActive]  = ImVec4(1,1,1, 0.28f);
+	c[ImGuiCol_Tab]                = bgCard;
+	c[ImGuiCol_TabHovered]         = bgHover;
+	c[ImGuiCol_TabActive]          = ImVec4(accent.x, accent.y, accent.z, 0.22f);
+	c[ImGuiCol_TableHeaderBg]      = ImVec4(0,0,0,0);
+	c[ImGuiCol_TableBorderLight]   = line;
+	c[ImGuiCol_TableBorderStrong]  = border;
 
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
@@ -297,14 +337,90 @@ void gui::Cleanup() {
 	Log::Info("[GUI]: Cleanup complete");
 }
 
+// ─── Modern UI primitives ─────────────────────────────────────────────────────
+
+namespace {
+	constexpr ImU32 kAccent    = IM_COL32(124, 157, 255, 255);  // #7C9DFF
+	constexpr ImU32 kAccentSub = IM_COL32(124, 157, 255,  60);
+	constexpr ImU32 kTxt       = IM_COL32(230, 233, 240, 255);
+	constexpr ImU32 kTxtDim    = IM_COL32(107, 118, 132, 255);
+	constexpr ImU32 kTxtMute   = IM_COL32( 80,  88,  99, 255);
+	constexpr ImU32 kDanger    = IM_COL32(255,  95,  95, 255);
+	constexpr ImU32 kWarn      = IM_COL32(255, 180,  65, 255);
+	constexpr ImU32 kGood      = IM_COL32( 85, 215, 130, 255);
+	constexpr ImU32 kTColor    = IM_COL32(255, 180,  65, 255);
+	constexpr ImU32 kCTColor   = IM_COL32( 90, 170, 255, 255);
+
+	// Thin left accent bar + small-caps title. Used between sections to give
+	// the panel the Linear/Raycast "section rail" look without any borders.
+	void SectionTitle(const char* label, ImU32 color = kAccent) {
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		const float rail_h = ImGui::GetTextLineHeight() * 0.85f;
+		const float rail_w = 2.5f;
+		const float rail_y = p.y + (ImGui::GetTextLineHeight() - rail_h) * 0.5f;
+		dl->AddRectFilled({ p.x, rail_y }, { p.x + rail_w, rail_y + rail_h }, color, 1.5f);
+
+		ImGui::SetCursorScreenPos({ p.x + rail_w + 8.0f, p.y });
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.42f, 0.46f, 0.52f, 1.0f));
+		ImGui::TextUnformatted(label);
+		ImGui::PopStyleColor();
+		ImGui::Spacing();
+	}
+
+	// Pill chip — rounded little badge. Draws at cursor, returns advance.
+	void PillBadge(const char* text, ImU32 fg, ImU32 bg) {
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 ts = ImGui::CalcTextSize(text);
+		ImVec2 p  = ImGui::GetCursorScreenPos();
+		const float padX = 7.0f, padY = 2.0f;
+		ImVec2 rmax = { p.x + ts.x + padX*2, p.y + ts.y + padY*2 };
+		dl->AddRectFilled(p, rmax, bg, (ts.y + padY*2) * 0.5f);
+		dl->AddText({ p.x + padX, p.y + padY }, fg, text);
+		ImGui::Dummy({ ts.x + padX*2, ts.y + padY*2 });
+	}
+
+	// URL display: subtle inset frame with inline Copy chip at the right edge.
+	void UrlRow(const char* url) {
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		float avail = ImGui::GetContentRegionAvail().x;
+		float h = ImGui::GetTextLineHeight() + 10.0f;
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		dl->AddRectFilled(p, { p.x + avail, p.y + h },
+		                  IM_COL32(255, 255, 255, 10), 6.0f);
+		dl->AddRect(p, { p.x + avail, p.y + h },
+		            IM_COL32(255, 255, 255, 14), 6.0f);
+
+		ImVec2 tpos = { p.x + 10.0f, p.y + 5.0f };
+		ImVec2 clip_max = { p.x + avail - 54.0f, p.y + h };
+		dl->PushClipRect(tpos, clip_max, true);
+		dl->AddText(tpos, kTxt, url);
+		dl->PopClipRect();
+
+		ImGui::PushID(url);
+		ImGui::SetCursorScreenPos({ p.x + avail - 46.0f, p.y + 4.0f });
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 2.0f));
+		ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(124, 157, 255, 30));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(124, 157, 255, 70));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(124, 157, 255, 110));
+		ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.486f, 0.616f, 1.0f, 1.0f));
+		if (ImGui::SmallButton("Copy")) ImGui::SetClipboardText(url);
+		ImGui::PopStyleColor(4);
+		ImGui::PopStyleVar();
+		ImGui::PopID();
+
+		ImGui::SetCursorScreenPos({ p.x, p.y + h + 4.0f });
+	}
+}
+
 void gui::RenderControlPanel() {
 	ImGuiIO& io = ImGui::GetIO();
-	constexpr float panelW = 220.0f;
+	constexpr float panelW = 240.0f;
 
 	// FirstUseEver on the anchor lets the user drag the panel and have ImGui
 	// persist the chosen position via its built-in [Window][##panel] section.
-	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - panelW - 10.0f, 10.0f), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(panelW, 0.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - panelW - 14.0f, 14.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(panelW, 0.0f), ImVec2(panelW, FLT_MAX));
 	ImGui::Begin("##panel", nullptr,
 		ImGuiWindowFlags_NoTitleBar        |
 		ImGuiWindowFlags_NoResize          |
@@ -312,133 +428,158 @@ void gui::RenderControlPanel() {
 		ImGuiWindowFlags_AlwaysAutoResize
 	);
 
-	// Title
-	ImGui::SetCursorPosX((panelW - ImGui::CalcTextSize("CS2Radar").x) * 0.5f);
-	ImGui::TextColored(ImVec4(0.5f, 0.78f, 1.0f, 1.0f), "CS2Radar");
+	// ── Brand row: accent dot + wordmark on the left, live FPS on the right.
+	{
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		float lineH = ImGui::GetTextLineHeight();
+		// Pulsing accent dot — tiny, left of the wordmark
+		float t = (float)ImGui::GetTime();
+		float pulse = 0.65f + 0.35f * sinf(t * 2.0f);
+		ImU32 dotCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.486f, 0.616f, 1.0f, pulse));
+		dl->AddCircleFilled({ p.x + 4.0f, p.y + lineH*0.5f + 1.0f }, 3.5f, dotCol);
+
+		ImGui::SetCursorScreenPos({ p.x + 14.0f, p.y });
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.90f, 0.91f, 0.94f, 1.0f));
+		ImGui::TextUnformatted("CS2Radar");
+		ImGui::PopStyleColor();
+
+		char fpsBuf[16];
+		snprintf(fpsBuf, sizeof(fpsBuf), "%.0f", io.Framerate);
+		float fpsW = ImGui::CalcTextSize(fpsBuf).x;
+		float labelW = ImGui::CalcTextSize("FPS").x;
+		ImGui::SameLine(panelW - fpsW - labelW - 28.0f);
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.90f, 0.91f, 0.94f, 1.0f));
+		ImGui::TextUnformatted(fpsBuf);
+		ImGui::PopStyleColor();
+		ImGui::SameLine(0, 4.0f);
+		ImGui::TextDisabled("FPS");
+	}
 
 	ImGui::Spacing();
 	ImGui::Separator();
 	ImGui::Spacing();
 
-	// FPS counter
-	char fpsBuf[16];
-	snprintf(fpsBuf, sizeof(fpsBuf), "%.0f FPS", io.Framerate);
-	ImGui::TextDisabled("%s", fpsBuf);
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	// Exit — neutral until hovered, then red tint
-	ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.14f, 0.14f, 0.18f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.50f, 0.12f, 0.12f, 1.0f));
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.60f, 0.10f, 0.10f, 1.0f));
-	if (ImGui::Button("Exit", ImVec2(-1.0f, 22.0f))) {
+	// ── Exit — ghost button with red hover accent.
+	ImGui::PushStyleColor(ImGuiCol_Button,        IM_COL32(255, 255, 255,  8));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(255,  95,  95, 40));
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive,  IM_COL32(255,  95,  95, 80));
+	if (ImGui::Button("Exit", ImVec2(-1.0f, 28.0f))) {
 		Log::Info("Exit: button clicked");
 		exitRequested = true;
 		bRunning.store(false, std::memory_order_release);
 	}
 	ImGui::PopStyleColor(3);
 
-	// Share
+	// ── Share
 	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
+	SectionTitle("SHARE");
 
-	if (ImGui::CollapsingHeader("Share")) {
+	ImGui::Checkbox("Enable sharing", &settings::shareEnabled);
+	if (settings::shareEnabled) {
 		ImGui::Spacing();
-		ImGui::Checkbox("Enable", &settings::shareEnabled);
-		if (settings::shareEnabled) {
-			ImGui::Spacing();
-			// OPSEC warning — the URLs below broadcast live DMA state.
-			// Painting this red every frame makes it hard to miss.
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-			ImGui::TextWrapped("URL exposes live game state. Anyone with the link sees your match.");
-			ImGui::PopStyleColor();
-			ImGui::Spacing();
-
-			if (s_Share) {
-				for (const auto& url : s_Share->Urls()) {
-					ImGui::TextUnformatted(url.c_str());
-					ImGui::SameLine();
-					ImGui::PushID(url.c_str());
-					if (ImGui::SmallButton("Copy")) ImGui::SetClipboardText(url.c_str());
-					ImGui::PopID();
-				}
-			}
-
-			ImGui::Spacing();
-			ImGui::Checkbox("Public tunnel (cloudflared)", &settings::sharePublic);
-			if (settings::sharePublic && s_Tunnel) {
-				std::string url = s_Tunnel->Url();
-				std::string err = s_Tunnel->LastError();
-				if (!err.empty()) {
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
-					ImGui::TextWrapped("%s", err.c_str());
-					ImGui::PopStyleColor();
-				} else if (url.empty()) {
-					ImGui::TextDisabled("waiting for cloudflared...");
-				} else {
-					ImGui::TextUnformatted(url.c_str());
-					ImGui::SameLine();
-					if (ImGui::SmallButton("Copy")) ImGui::SetClipboardText(url.c_str());
-				}
-			}
-		}
-	}
-
-	// Settings
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	if (ImGui::CollapsingHeader("Settings")) {
-		ImGui::Spacing();
-
-		if (ImGui::BeginTable("##overlay", 3,
-		    ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
+		// OPSEC — this URL broadcasts live DMA state. One red pill makes it
+		// visible without a wall of text.
 		{
-			ImGui::TableSetupColumn("");
-			ImGui::TableSetupColumn("Enemies");
-			ImGui::TableSetupColumn("Friendlies");
-			ImGui::TableHeadersRow();
+			ImDrawList* dl = ImGui::GetWindowDrawList();
+			float avail = ImGui::GetContentRegionAvail().x;
+			ImVec2 p = ImGui::GetCursorScreenPos();
+			dl->AddRectFilled(p, { p.x + avail, p.y + 44.0f },
+			                  IM_COL32(255,  95,  95,  18), 6.0f);
+			dl->AddRect(p, { p.x + avail, p.y + 44.0f },
+			            IM_COL32(255,  95,  95,  45), 6.0f);
+			dl->AddText({ p.x + 10.0f, p.y + 6.0f },
+			            IM_COL32(255, 160, 160, 255), "LIVE EXPOSURE");
+			ImGui::SetCursorScreenPos({ p.x + 10.0f, p.y + 22.0f });
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.55f, 0.55f, 1.0f));
+			ImGui::PushTextWrapPos(p.x + avail - 10.0f);
+			ImGui::TextUnformatted("Anyone with the link sees your match.");
+			ImGui::PopTextWrapPos();
+			ImGui::PopStyleColor();
+			ImGui::SetCursorScreenPos({ p.x, p.y + 50.0f });
+		}
 
-			auto row = [](const char* label, bool* enem, bool* friendly,
-			              const char* idEnem, const char* idFriend) {
-				ImGui::TableNextRow();
-				ImGui::TableNextColumn();
-				ImGui::AlignTextToFramePadding();
-				ImGui::TextUnformatted(label);
-				ImGui::TableNextColumn(); ImGui::Checkbox(idEnem,   enem);
-				ImGui::TableNextColumn(); ImGui::Checkbox(idFriend, friendly);
-			};
-
-			row("Aim Lines",    &settings::showAimLinesEnemies,    &settings::showAimLinesFriendlies,    "##aim_e",  "##aim_f");
-			row("Weapon Icons", &settings::showWeaponIconsEnemies, &settings::showWeaponIconsFriendlies, "##wpn_e",  "##wpn_f");
-			row("Health Bars",  &settings::showHealthBarsEnemies,  &settings::showHealthBarsFriendlies,  "##hp_e",   "##hp_f");
-			row("Player Names", &settings::showPlayerNamesEnemies, &settings::showPlayerNamesFriendlies, "##name_e", "##name_f");
-			ImGui::EndTable();
+		if (s_Share) {
+			for (const auto& url : s_Share->Urls())
+				UrlRow(url.c_str());
 		}
 
 		ImGui::Spacing();
-		ImGui::Checkbox("Team Panels",  &settings::showTeamPanels);
-		ImGui::Checkbox("Rotate Radar", &settings::rotateRadar);
-
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
-
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::SliderFloat("##iconscale", &settings::iconScale,    0.05f, 0.50f,  "Icons  %.2fx");
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::SliderFloat("##aimlength", &settings::aimLineLength, 10.0f, 100.0f, "Aim  %.0fpx");
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::SliderFloat("##dotradius", &settings::dotRadius,     3.0f,  14.0f,  "Dot  %.1fpx");
-		ImGui::SetNextItemWidth(-1.0f);
-		ImGui::SliderFloat("##zoom",      &settings::radarZoom,    0.5f,  3.0f,   "Zoom  %.2fx");
-
-		ImGui::Spacing();
+		ImGui::Checkbox("Public tunnel (cloudflared)", &settings::sharePublic);
+		if (settings::sharePublic && s_Tunnel) {
+			std::string url = s_Tunnel->Url();
+			std::string err = s_Tunnel->LastError();
+			if (!err.empty()) {
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
+				ImGui::TextWrapped("%s", err.c_str());
+				ImGui::PopStyleColor();
+			} else if (url.empty()) {
+				// Tiny loading dot + label
+				float t = (float)ImGui::GetTime();
+				float pulse = 0.4f + 0.6f * sinf(t * 3.0f);
+				ImU32 loadCol = ImGui::ColorConvertFloat4ToU32(ImVec4(0.42f, 0.46f, 0.52f, pulse));
+				ImDrawList* dl = ImGui::GetWindowDrawList();
+				ImVec2 p = ImGui::GetCursorScreenPos();
+				float lineH = ImGui::GetTextLineHeight();
+				dl->AddCircleFilled({ p.x + 4.0f, p.y + lineH*0.5f + 1.0f }, 3.0f, loadCol);
+				ImGui::SetCursorScreenPos({ p.x + 14.0f, p.y });
+				ImGui::TextDisabled("waiting for cloudflared");
+			} else {
+				UrlRow(url.c_str());
+			}
+		}
 	}
+
+	// ── Settings
+	ImGui::Spacing();
+	ImGui::Spacing();
+	SectionTitle("OVERLAY");
+
+	if (ImGui::BeginTable("##overlay", 3,
+	    ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_NoSavedSettings))
+	{
+		ImGui::TableSetupColumn("");
+		ImGui::TableSetupColumn("Enemies");
+		ImGui::TableSetupColumn("Allies");
+		ImGui::TableHeadersRow();
+
+		auto row = [](const char* label, bool* enem, bool* friendly,
+		              const char* idEnem, const char* idFriend) {
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::AlignTextToFramePadding();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.42f, 0.46f, 0.52f, 1.0f));
+			ImGui::TextUnformatted(label);
+			ImGui::PopStyleColor();
+			ImGui::TableNextColumn(); ImGui::Checkbox(idEnem,   enem);
+			ImGui::TableNextColumn(); ImGui::Checkbox(idFriend, friendly);
+		};
+
+		row("Aim",    &settings::showAimLinesEnemies,    &settings::showAimLinesFriendlies,    "##aim_e",  "##aim_f");
+		row("Weapon", &settings::showWeaponIconsEnemies, &settings::showWeaponIconsFriendlies, "##wpn_e",  "##wpn_f");
+		row("Health", &settings::showHealthBarsEnemies,  &settings::showHealthBarsFriendlies,  "##hp_e",   "##hp_f");
+		row("Name",   &settings::showPlayerNamesEnemies, &settings::showPlayerNamesFriendlies, "##name_e", "##name_f");
+		ImGui::EndTable();
+	}
+
+	ImGui::Spacing();
+	ImGui::Checkbox("Team panels",  &settings::showTeamPanels);
+	ImGui::Checkbox("Rotate radar", &settings::rotateRadar);
+
+	ImGui::Spacing();
+	ImGui::Spacing();
+	SectionTitle("TUNING");
+
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::SliderFloat("##iconscale", &settings::iconScale,    0.05f, 0.50f,  "Icons  %.2fx");
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::SliderFloat("##aimlength", &settings::aimLineLength, 10.0f, 100.0f, "Aim    %.0fpx");
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::SliderFloat("##dotradius", &settings::dotRadius,     3.0f,  14.0f,  "Dot    %.1fpx");
+	ImGui::SetNextItemWidth(-1.0f);
+	ImGui::SliderFloat("##zoom",      &settings::radarZoom,    0.5f,  3.0f,   "Zoom   %.2fx");
+
+	ImGui::Spacing();
 
 	ImGui::End();
 }
@@ -446,28 +587,40 @@ void gui::RenderControlPanel() {
 // ─── Team Panels ──────────────────────────────────────────────────────────────
 
 static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEnemy, bool isCarrier = false) {
-	constexpr float kDotR   = 5.0f;
-	constexpr float kIndent = kDotR * 2.0f + 8.0f;
-	constexpr float kBarH   = 3.0f;
+	constexpr float kDotR   = 4.5f;
+	constexpr float kIndent = kDotR * 2.0f + 12.0f;
+	constexpr float kBarH   = 2.5f;
 	constexpr float kIconH  = 14.0f;
 
 	bool        alive  = p.pawn.lifeState == 0;
-	float       alpha  = alive ? 1.0f : 0.38f;
+	float       alpha  = alive ? 1.0f : 0.35f;
 	ImDrawList* dl     = ImGui::GetWindowDrawList();
 	ImVec2      origin = ImGui::GetCursorScreenPos();
 	float       lineH  = ImGui::GetTextLineHeight();
 	float       winW   = ImGui::GetWindowWidth();
 
-	// Dot
+	// Team-coloured dot — team colour for friendlies via ctrl.color; for enemies
+	// the team itself (T=orange, CT=blue) instead of a blanket red, so the row
+	// reads at a glance which team the enemy is on.
 	ImU32 dotCol;
-	if (!isEnemy)                                             dotCol = gui::setColor(p.ctrl.color, alpha * 255.0f);
-	else                                                           dotCol = IM_COL32(255, 60,  60,  (int)(alpha * 255));
+	if (!isEnemy) {
+		dotCol = gui::setColor(p.ctrl.color, alpha * 255.0f);
+	} else {
+		const ImU32 base = (p.ctrl.teamID == 2) ? kTColor : kCTColor;
+		dotCol = (base & 0x00FFFFFF) | ((uint32_t)(alpha * 255.0f) << 24);
+	}
 
-	ImVec2 dotCtr = { origin.x + kDotR + 2.0f, origin.y + lineH * 0.5f + 1.0f };
-	//dl->AddCircleFilled(dotCtr, kDotR + 1.0f, IM_COL32(0, 0, 0, (int)(alpha * 180)));
-	dl->AddCircleFilled(dotCtr, kDotR,         dotCol);
+	// Soft glow halo under the dot (alive only) so the row has a tiny spark.
+	if (alive) {
+		for (int i = 3; i >= 1; --i) {
+			ImU32 halo = (dotCol & 0x00FFFFFF) | ((uint32_t)(18 / i) << 24);
+			dl->AddCircleFilled({ origin.x + kDotR + 2.0f, origin.y + lineH * 0.5f + 1.0f },
+			                    kDotR + i * 1.2f, halo);
+		}
+	}
+	dl->AddCircleFilled({ origin.x + kDotR + 2.0f, origin.y + lineH * 0.5f + 1.0f }, kDotR, dotCol);
 
-	// Name (left) + HP number (right)
+	// Name (left) + HP number (right, tabular numerals)
 	char hpBuf[8];
 	if (alive) snprintf(hpBuf, sizeof(hpBuf), "%d", p.pawn.health);
 	else       snprintf(hpBuf, sizeof(hpBuf), "---");
@@ -476,7 +629,7 @@ static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEn
 	float nameMaxW = winW - kIndent - hpTextW - 20.0f;
 
 	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + kIndent);
-	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.9f, 0.95f, alpha));
+	ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.902f, 0.914f, 0.941f, alpha));
 
 	ImVec2 nameScreen = ImGui::GetCursorScreenPos();
 	ImGui::PushClipRect(nameScreen, { nameScreen.x + nameMaxW, nameScreen.y + lineH + 2.0f }, true);
@@ -488,17 +641,21 @@ static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEn
 	else       ImGui::TextDisabled("---");
 	ImGui::PopStyleColor();
 
-	// Health bar
+	// Health bar — slimmer, rounded pill, more subtle track.
 	float barStartX = origin.x + kIndent;
 	float barW      = winW - kIndent - 14.0f;
-	ImVec2 barTL    = { barStartX, ImGui::GetCursorScreenPos().y };
+	ImVec2 barTL    = { barStartX, ImGui::GetCursorScreenPos().y + 1.0f };
 	float filled    = alive ? (float)p.pawn.health / 100.0f : 0.0f;
 	if (filled > 1.0f) filled = 1.0f;
-	float r = 255.0f * (1.0f - filled);
-	float g = 255.0f * filled;
-	dl->AddRectFilled(barTL, { barTL.x + barW,          barTL.y + kBarH }, IM_COL32(30, 30, 30, (int)(alpha * 200)), 1.5f);
-	dl->AddRectFilled(barTL, { barTL.x + barW * filled, barTL.y + kBarH }, IM_COL32((int)r, (int)g, 0, (int)(alpha * 255)), 1.5f);
-	ImGui::Dummy({ 0.0f, kBarH + 3.0f });
+	// Low-HP → red, high-HP → green via HSL-like hue sweep.
+	float r = 255.0f * (1.0f - filled * 0.85f);
+	float g = 180.0f + 75.0f * filled;
+	ImU32 barBg = IM_COL32(255, 255, 255, (int)(alpha * 20));
+	ImU32 barFg = IM_COL32((int)r, (int)g, 80, (int)(alpha * 230));
+	dl->AddRectFilled(barTL, { barTL.x + barW,          barTL.y + kBarH }, barBg, kBarH * 0.5f);
+	if (filled > 0.001f)
+		dl->AddRectFilled(barTL, { barTL.x + barW * filled, barTL.y + kBarH }, barFg, kBarH * 0.5f);
+	ImGui::Dummy({ 0.0f, kBarH + 4.0f });
 
 	// Weapon icon (left-indented)
 	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + kIndent);
@@ -525,8 +682,9 @@ static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEn
 	// Right-aligned: DEFUSING > C4 carrier > armor/defuser
 	if (alive && p.pawn.isDefusing) {
 		constexpr const char* kLabel = "DEFUSING";
-		ImGui::SameLine(winW - ImGui::CalcTextSize(kLabel).x - 14.0f);
-		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.1f, 1.0f), kLabel);
+		float labelW = ImGui::CalcTextSize(kLabel).x + 14.0f;
+		ImGui::SameLine(winW - labelW - 14.0f);
+		PillBadge(kLabel, IM_COL32(255, 180, 65, 255), IM_COL32(255, 180, 65, 30));
 	} else if (alive && isCarrier) {
 		auto it = icons::iconTextures.find(49);
 		if (it != icons::iconTextures.end() && it->second) {
@@ -557,14 +715,16 @@ static void renderPlayerEntry(const CPlayer& p, const CGame& /*game*/, bool isEn
 		}
 	}
 
-	ImGui::Spacing();
+	ImGui::Dummy({ 0.0f, 4.0f });
+	ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(1.0f, 1.0f, 1.0f, 0.045f));
 	ImGui::Separator();
+	ImGui::PopStyleColor();
 	ImGui::Spacing();
 }
 
 void gui::RenderTeamPanels(const CGame& game) {
-	constexpr float kPanelW = 240.0f;
-	constexpr float kPad    = 10.0f;
+	constexpr float kPanelW = 260.0f;
+	constexpr float kPad    = 14.0f;
 	constexpr ImGuiWindowFlags kFlags =
 		ImGuiWindowFlags_NoTitleBar        |
 		ImGuiWindowFlags_NoResize          |
@@ -573,14 +733,48 @@ void gui::RenderTeamPanels(const CGame& game) {
 
 	TeamID myTeam = game.localPlayer.ctrl.teamID;
 
+	// Count alive enemies for the header pill.
+	int aliveCount = 0, totalCount = 0;
+	for (int i = 0; i < MAX_ENTITIES; i++) {
+		const CPlayer& p = game.players[i];
+		if (!p.controllerBase || p.ctrl.teamID < TEAM_T || p.ctrl.teamID == myTeam) continue;
+		totalCount++;
+		if (p.pawn.health > 0) aliveCount++;
+	}
+
 	ImGui::SetNextWindowPos(ImVec2(kPad, kPad), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(kPanelW, 0.0f), ImGuiCond_FirstUseEver);
+	// Pin width so AlwaysAutoResize can only grow the panel vertically.
+	// Without this, a transient wide item on first frame (or anything that
+	// accidentally extends the content region) latches the window open at
+	// full-screen width and never shrinks back.
+	ImGui::SetNextWindowSizeConstraints(ImVec2(kPanelW, 0.0f), ImVec2(kPanelW, FLT_MAX));
 	ImGui::Begin("##enemies", nullptr, kFlags);
 
-	ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize("ENEMIES").x) * 0.5f);
-	ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.45f, 1.0f), "ENEMIES");
-	ImGui::Spacing();
+	// Header row — accent rail + title + alive/total counter on the right.
+	{
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		float lineH = ImGui::GetTextLineHeight();
+		dl->AddRectFilled({ p.x, p.y + 2.0f }, { p.x + 2.5f, p.y + lineH - 1.0f },
+		                  IM_COL32(255, 95, 95, 255), 1.5f);
+		ImGui::SetCursorScreenPos({ p.x + 11.0f, p.y });
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.42f, 0.46f, 0.52f, 1.0f));
+		ImGui::TextUnformatted("ENEMIES");
+		ImGui::PopStyleColor();
+
+		char buf[16];
+		snprintf(buf, sizeof(buf), "%d / %d", aliveCount, totalCount);
+		float bw = ImGui::CalcTextSize(buf).x;
+		ImGui::SameLine(kPanelW - bw - 32.0f);
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.902f, 0.914f, 0.941f, 1.0f));
+		ImGui::TextUnformatted(buf);
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::Dummy({ 0.0f, 6.0f });
+	ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(1.0f, 1.0f, 1.0f, 0.045f));
 	ImGui::Separator();
+	ImGui::PopStyleColor();
 	ImGui::Spacing();
 
 	for (int i = 0; i < MAX_ENTITIES; i++) {
@@ -601,8 +795,8 @@ void gui::RenderBombPanel(const CGame& game) {
 	// useful for T rotates and post-plant peeks, not just CT defuse calls.
 	if (!b.entity) return;
 
-	constexpr float kPanelW = 200.0f;
-	constexpr float kPad    = 10.0f;
+	constexpr float kPanelW = 220.0f;
+	constexpr float kPad    = 14.0f;
 	constexpr ImGuiWindowFlags kFlags =
 		ImGuiWindowFlags_NoTitleBar        |
 		ImGuiWindowFlags_NoResize          |
@@ -613,48 +807,87 @@ void gui::RenderBombPanel(const CGame& game) {
 	// persists the chosen position to the ini file).
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::SetNextWindowPos(ImVec2(kPad, io.DisplaySize.y - kPad), ImGuiCond_FirstUseEver, ImVec2(0.0f, 1.0f));
-	ImGui::SetNextWindowSize(ImVec2(kPanelW, 0.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(kPanelW, 0.0f), ImVec2(kPanelW, FLT_MAX));
 	ImGui::Begin("##bomb", nullptr, kFlags);
 
-	// Title
-	ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize("BOMB").x) * 0.5f);
-	ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "BOMB");
-	ImGui::Spacing();
+	// Section header: accent rail + "BOMB" + site pill on the right.
+	{
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		float lineH = ImGui::GetTextLineHeight();
+		dl->AddRectFilled({ p.x, p.y + 2.0f }, { p.x + 2.5f, p.y + lineH - 1.0f },
+		                  IM_COL32(255, 180, 65, 255), 1.5f);
+		ImGui::SetCursorScreenPos({ p.x + 11.0f, p.y });
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.42f, 0.46f, 0.52f, 1.0f));
+		ImGui::TextUnformatted("BOMB");
+		ImGui::PopStyleColor();
+
+		if (b.entity && !b.hasDefused && !b.hasExploded) {
+			const char* siteStr = (b.site == 0) ? "SITE A" : (b.site == 1) ? "SITE B" : "SITE ?";
+			ImVec2 ts = ImGui::CalcTextSize(siteStr);
+			ImGui::SameLine(kPanelW - ts.x - 32.0f);
+			PillBadge(siteStr, IM_COL32(255, 180, 65, 255), IM_COL32(255, 180, 65, 30));
+		}
+	}
+
+	ImGui::Dummy({ 0.0f, 6.0f });
+	ImGui::PushStyleColor(ImGuiCol_Separator, ImVec4(1.0f, 1.0f, 1.0f, 0.045f));
 	ImGui::Separator();
+	ImGui::PopStyleColor();
 	ImGui::Spacing();
 
 	if (b.hasDefused) {
-		// Defused
 		ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize("DEFUSED").x) * 0.5f);
-		ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "DEFUSED");
+		ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.5f, 1.0f), "DEFUSED");
 
 	} else if (b.hasExploded) {
-		// Exploded
 		ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize("EXPLODED").x) * 0.5f);
 		ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "EXPLODED");
 
 	} else if (b.entity) {
-		// Planted — show site + countdown
-		const char* siteStr = (b.site == 0) ? "A" : (b.site == 1) ? "B" : "?";
-		char plantBuf[24];
-		snprintf(plantBuf, sizeof(plantBuf), "PLANTED - %s", siteStr);
-		ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize(plantBuf).x) * 0.5f);
-		ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", plantBuf);
+		float   rem    = b.timeRemaining();
+		bool    danger = rem <= 10.0f;
+		ImVec4  timerCol = danger
+			? ImVec4(1.0f, 0.37f, 0.37f, 1.0f)
+			: ImVec4(1.0f, 0.82f, 0.30f, 1.0f);
 
-		// Timer — turns red below 10 seconds
-		float   rem = b.timeRemaining();
-		ImVec4  timerCol = (rem > 10.0f) ? ImVec4(1.0f, 0.9f, 0.3f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-		char    timerBuf[12];
+		// Big countdown — centered, no pulse on the text itself so it stays
+		// readable; low-time emphasis comes from the colour and the bar below.
+		char timerBuf[12];
 		snprintf(timerBuf, sizeof(timerBuf), "%.1fs", rem);
-		ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize(timerBuf).x) * 0.5f);
-		ImGui::TextColored(timerCol, "%s", timerBuf);
+		ImVec2 ts = ImGui::CalcTextSize(timerBuf);
+		ImDrawList* dl = ImGui::GetWindowDrawList();
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		// subtle glow halo behind the number
+		ImU32 halo = ImGui::ColorConvertFloat4ToU32(ImVec4(timerCol.x, timerCol.y, timerCol.z, 0.14f));
+		dl->AddRectFilled({ p.x + 4.0f, p.y + 2.0f },
+		                  { p.x + kPanelW - 36.0f, p.y + ts.y + 10.0f },
+		                  halo, 10.0f);
+		ImGui::SetCursorScreenPos({ p.x + (kPanelW - ts.x) * 0.5f - 16.0f, p.y + 5.0f });
+		ImGui::PushStyleColor(ImGuiCol_Text, timerCol);
+		ImGui::TextUnformatted(timerBuf);
+		ImGui::PopStyleColor();
+		ImGui::Dummy({ 0.0f, 6.0f });
+
+		// Thin countdown bar — proportional to remaining / 40s (full plant).
+		constexpr float kBombMax = 40.0f;
+		float progress = rem / kBombMax;
+		if (progress < 0.0f) progress = 0.0f;
+		if (progress > 1.0f) progress = 1.0f;
+		ImVec2 bp = ImGui::GetCursorScreenPos();
+		float bw = kPanelW - 32.0f;
+		dl->AddRectFilled(bp, { bp.x + bw, bp.y + 3.0f },
+		                  IM_COL32(255, 255, 255, 18), 1.5f);
+		dl->AddRectFilled(bp, { bp.x + bw * progress, bp.y + 3.0f },
+		                  ImGui::ColorConvertFloat4ToU32(timerCol), 1.5f);
+		ImGui::Dummy({ 0.0f, 7.0f });
 
 		if (b.isBeingDefused) {
 			constexpr const char* kDefusing = "DEFUSING";
-			ImGui::SetCursorPosX((kPanelW - ImGui::CalcTextSize(kDefusing).x) * 0.5f);
-			ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), kDefusing);
+			float pw = ImGui::CalcTextSize(kDefusing).x + 14.0f;
+			ImGui::SetCursorPosX((kPanelW - pw) * 0.5f);
+			PillBadge(kDefusing, IM_COL32(110, 220, 255, 255), IM_COL32(110, 220, 255, 30));
 		}
-
 	}
 
 	ImGui::Spacing();
